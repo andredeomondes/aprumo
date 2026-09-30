@@ -9,6 +9,7 @@ import numpy as np
 
 from aprumo_ai.domain import Requirement
 from aprumo_ai.embeddings import Embedder, EmbeddingError
+from aprumo_ai.observability import METRICS
 from aprumo_ai.retrieval import BM25Retriever, ScoredRequirement
 
 log = logging.getLogger("aprumo.hybrid")
@@ -53,8 +54,10 @@ class HybridRetriever:
             vector = self._embedder.embed([query])[0]
         except EmbeddingError as exc:
             log.warning("busca densa indisponível, só BM25: %s", exc)
+            METRICS.inc("retrieval", mode="lexical_fallback")
             return lexical[:k]
         dense = self._dense.search(vector, k=depth, norms=norms)
+        METRICS.inc("retrieval", mode="hybrid")
 
         fused: dict[str, float] = defaultdict(float)
         by_ref: dict[str, Requirement] = {}

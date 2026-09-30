@@ -7,6 +7,7 @@ from collections.abc import Callable, Hashable
 from typing import TypeVar
 
 from aprumo_ai.domain import QA, Finding, Question, Requirement
+from aprumo_ai.observability import METRICS, Metrics
 from aprumo_ai.reasoner import QueryExpansion, Reasoner, ReasonerError
 from aprumo_ai.text import strip_accents
 
@@ -88,15 +89,17 @@ def _summary(text: str, limit: int = 180) -> str:
 class ResilientReasoner:
     """Usa o principal; se ele falhar, responde com o reserva em vez de devolver erro."""
 
-    def __init__(self, primary: Reasoner, backup: Reasoner) -> None:
+    def __init__(self, primary: Reasoner, backup: Reasoner, metrics: Metrics = METRICS) -> None:
         self._primary = primary
         self._backup = backup
+        self._metrics = metrics
 
     def _run(self, step: str, call: Callable[[Reasoner], R]) -> R:
         try:
             return call(self._primary)
         except ReasonerError as exc:
             log.warning("%s caiu para as regras locais: %s", step, exc)
+            self._metrics.inc("fallback_to_rules", step=step)
             return call(self._backup)
 
     def expand_query(self, activity: str) -> QueryExpansion:
@@ -112,15 +115,18 @@ class ResilientReasoner:
 class CachingReasoner:
     """Memoriza respostas por entrada. Quem testa os exemplos prontos não gasta chamada."""
 
-    def __init__(self, inner: Reasoner, max_entries: int = 256) -> None:
+    def __init__(self, inner: Reasoner, max_entries: int = 256, metrics: Metrics = METRICS) -> None:
         self._inner = inner
+        self._metrics = metrics
         self._max = max_entries
         self._entries: OrderedDict[Hashable, object] = OrderedDict()
 
     def _cached(self, key: Hashable, compute: Callable[[], R]) -> R:
         if key in self._entries:
+            self._metrics.inc("cache", result="hit")
             self._entries.move_to_end(key)
             return self._entries[key]  # type: ignore[return-value]
+        self._metrics.inc("cache", result="miss")
         value = compute()
         self._entries[key] = value
         if len(self._entries) > self._max:

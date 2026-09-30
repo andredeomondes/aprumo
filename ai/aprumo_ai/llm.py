@@ -16,6 +16,8 @@ import anthropic
 import openai
 from pydantic import BaseModel, ValidationError
 
+from aprumo_ai.observability import METRICS, Metrics
+
 log = logging.getLogger("aprumo.llm")
 
 T = TypeVar("T", bound=BaseModel)
@@ -136,8 +138,10 @@ class FallbackLLM:
         providers: Sequence[StructuredLLM],
         cooldown_seconds: float = 60.0,
         clock: Callable[[], float] = time.monotonic,
+        metrics: Metrics = METRICS,
     ) -> None:
         self._providers = list(providers)
+        self._metrics = metrics
         self._cooldown = cooldown_seconds
         self._clock = clock
         self._resting_until: dict[str, float] = {}
@@ -147,16 +151,20 @@ class FallbackLLM:
         failures = []
         for provider in self._providers:
             if self._resting_until.get(provider.name, 0.0) > self._clock():
+                self._metrics.inc("llm", provider=provider.name, outcome="resting")
                 continue
             try:
                 result = provider.generate(schema, system, prompt, max_tokens)
             except LLMError as exc:
                 failures.append(str(exc))
                 log.warning("provedor falhou: %s", exc)
+                outcome = "rate_limited" if exc.rate_limited else "error"
+                self._metrics.inc("llm", provider=provider.name, outcome=outcome)
                 if exc.rate_limited:
                     self._resting_until[provider.name] = self._clock() + self._cooldown
                 continue
             self.last_provider = provider.name
+            self._metrics.inc("llm", provider=provider.name, outcome="ok")
             log.info("respondido por %s", provider.name)
             return result
         raise LLMError("Nenhum provedor respondeu: " + "; ".join(failures or ["todos em pausa"]))
