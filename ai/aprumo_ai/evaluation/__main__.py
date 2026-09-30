@@ -47,6 +47,14 @@ def score(pairs: list[tuple[set[str], set[str]]]) -> tuple[float, float, float]:
     return precision, recall, f1
 
 
+def parse_floors(argv: list[str]) -> dict[str, float]:
+    """--min-f1 modo=valor: piso de qualidade que faz o CI falhar se a métrica cair."""
+    if "--min-f1" not in argv:
+        return {}
+    mode, value = argv[argv.index("--min-f1") + 1].split("=")
+    return {mode: float(value)}
+
+
 def build_modes() -> dict[str, Callable[[str], QueryExpansion | None]]:
     modes: dict[str, Callable[[str], QueryExpansion | None]] = {
         "bm25": lambda activity: None,
@@ -73,6 +81,7 @@ def main() -> None:
 
     summary = ["| Modo | Norma principal certa | Precisão | Revocação | F1 |", "|---|---:|---:|---:|---:|"]
     errors = ["| Modo | Atividade | Esperado | Previsto |", "|---|---|---|---|"]
+    f1_by_mode: dict[str, float] = {}
     for name, build in build_modes().items():
         pairs, principal_hits = [], 0
         for case in cases:
@@ -84,6 +93,7 @@ def main() -> None:
                 errors.append(f"| {name} | {case['activity']} | {', '.join(sorted(gold))} | {', '.join(sorted(predicted)) or '—'} |")
         precision, recall, f1 = score(pairs)
         summary.append(f"| {name} | {principal_hits}/{len(cases)} | {precision:.2f} | {recall:.2f} | {f1:.2f} |")
+        f1_by_mode[name] = f1
 
     noise = [f"| {text} | {predict(service, text, None)[1]:.1f} |" for text in OUT_OF_DOMAIN]
     report = "\n".join([
@@ -106,6 +116,9 @@ def main() -> None:
     ])
     (ROOT / "EVALUATION.md").write_text(report, encoding="utf-8")
     print(report)
+    for mode, floor in parse_floors(sys.argv).items():
+        if f1_by_mode.get(mode, 0.0) < floor:
+            raise SystemExit(f"F1 de {mode} = {f1_by_mode.get(mode, 0.0):.2f}, abaixo do piso {floor:.2f}")
 
 
 if __name__ == "__main__":
