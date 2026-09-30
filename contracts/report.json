@@ -1,0 +1,54 @@
+{
+ "activity": "Troca de luminária em poste",
+ "norms": [
+  {
+   "norm": "NR-35",
+   "title": "Trabalho em Altura",
+   "share": 1.0
+  }
+ ],
+ "findings": [
+  {
+   "ref": "NR-35 item 35.5.1",
+   "status": "pendente",
+   "justification": "Sem linha de vida."
+  }
+ ],
+ "requirements": [
+  {
+   "norm": "NR-35",
+   "item": "35.5.1",
+   "annex": null,
+   "text": "Sistema de proteção contra quedas.",
+   "revoked": false,
+   "ref": "NR-35 item 35.5.1"
+  }
+ ],
+ "corpus_date": "2026-09-30",
+ "generated_at": "2026-09-30T20:00:00+00:00",
+ "disclaimer": "Relatório de apoio gerado automaticamente. Não é laudo nem parecer técnico, não substitui profissional habilitado nem a leitura da norma.",
+ "risk_context": [
+  {
+   "norm": "NR-18",
+   "sector": "Construção",
+   "months": [
+    "202506",
+    "202507"
+   ],
+   "values": [
+    900,
+    950
+   ],
+   "last_12m": 11000,
+   "previous_12m": 10000,
+   "change_pct": 10.0,
+   "deaths_12m": 40,
+   "forecast": [
+    960,
+    970,
+    980
+   ],
+   "forecast_beats_naive": true
+  }
+ ]
+}

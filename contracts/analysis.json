@@ -1,0 +1,54 @@
+{
+ "status": "ok",
+ "message": "Normas aplicáveis: NR-35.",
+ "norms": [
+  {
+   "norm": "NR-35",
+   "title": "Trabalho em Altura",
+   "share": 1.0
+  }
+ ],
+ "requirements": [
+  {
+   "norm": "NR-35",
+   "item": "35.5.1",
+   "annex": null,
+   "text": "Sistema de proteção contra quedas.",
+   "revoked": false,
+   "ref": "NR-35 item 35.5.1"
+  }
+ ],
+ "questions": [
+  {
+   "id": "q1",
+   "text": "Há linha de vida?",
+   "refs": [
+    "NR-35 item 35.5.1"
+   ]
+  }
+ ],
+ "risk_context": [
+  {
+   "norm": "NR-18",
+   "sector": "Construção",
+   "months": [
+    "202506",
+    "202507"
+   ],
+   "values": [
+    900,
+    950
+   ],
+   "last_12m": 11000,
+   "previous_12m": 10000,
+   "change_pct": 10.0,
+   "deaths_12m": 40,
+   "forecast": [
+    960,
+    970,
+    980
+   ],
+   "forecast_beats_naive": true
+  }
+ ]
+}
