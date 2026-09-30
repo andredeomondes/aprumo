@@ -89,13 +89,18 @@ def test_vetores_de_outro_corpus_sao_recusados(tmp_path, monkeypatch):
     corpus = tmp_path / "corpus.json"
     corpus.write_text("{}", encoding="utf-8")
     np.save(tmp_path / "embeddings.npy", VECTORS.astype(np.float16))
-    (tmp_path / "embeddings.json").write_text(json.dumps({"corpus_sha256": "outro", "count": 4}), encoding="utf-8")
-    monkeypatch.setenv("GEMINI_API_KEY", "x")
+    meta = {"provider": "mistral", "corpus_sha256": "outro", "count": 4}
+    (tmp_path / "embeddings.json").write_text(json.dumps(meta), encoding="utf-8")
+    monkeypatch.setenv("MISTRAL_API_KEY", "x")
     assert isinstance(retriever_from_env(CORPUS, tmp_path), BM25Retriever)
 
 
 def test_sem_chave_usa_so_bm25(tmp_path, monkeypatch):
+    import json
+
     from aprumo_ai.providers import retriever_from_env
 
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    np.save(tmp_path / "embeddings.npy", VECTORS.astype(np.float16))
+    (tmp_path / "embeddings.json").write_text(json.dumps({"provider": "mistral"}), encoding="utf-8")
+    monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
     assert isinstance(retriever_from_env(CORPUS, tmp_path), BM25Retriever)

@@ -7,6 +7,14 @@ import numpy as np
 import openai
 
 
+# Provedor → (URL compatível com a OpenAI, variável da chave, modelo, dimensões ou None).
+# Gemini dá 1.000 textos por dia no plano gratuito, pouco para 5 mil itens; o Mistral é o padrão.
+EMBEDDING_PROVIDERS: dict[str, tuple[str, str, str, int | None]] = {
+    "mistral": ("https://api.mistral.ai/v1", "MISTRAL_API_KEY", "mistral-embed", None),
+    "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai/", "GEMINI_API_KEY", "gemini-embedding-001", 768),
+}
+
+
 class EmbeddingError(Exception):
     """O provedor de embeddings falhou; quem chama deve cair na busca lexical."""
 
@@ -25,7 +33,7 @@ class OpenAICompatibleEmbedder:
         self,
         model: str,
         *,
-        dimensions: int = 768,
+        dimensions: int | None = None,
         base_url: str | None = None,
         api_key: str | None = None,
         client: object | None = None,
@@ -37,7 +45,8 @@ class OpenAICompatibleEmbedder:
 
     def embed(self, texts: list[str]) -> np.ndarray:
         try:
-            response = self._client.embeddings.create(model=self.model, input=texts, dimensions=self.dimensions)
+            extra = {"dimensions": self.dimensions} if self.dimensions else {}
+            response = self._client.embeddings.create(model=self.model, input=texts, **extra)
         except openai.APIError as exc:
             raise EmbeddingError(f"embeddings: {type(exc).__name__}") from exc
         return normalize(np.array([d.embedding for d in response.data], dtype=np.float32))

@@ -46,7 +46,11 @@ class SectorTrend(BaseModel):
 
 
 def sector_series(data: dict, prefixes: list[str]) -> tuple[list[str], list[int], list[int]]:
-    months = sorted(data["months"])
+    """Só os meses com notificação completa: antes do primeiro arquivo e nos últimos meses
+    as CATs ainda estão chegando, e a série pareceria cair sem ter caído."""
+    first = data.get("complete_from", "000000")
+    last = data.get("complete_until", "999999")
+    months = [m for m in sorted(data["months"]) if first <= m <= last]
     values, deaths = [], []
     for month in months:
         rows = [counts for cnae, counts in data["months"][month].items() if cnae.startswith(tuple(prefixes))]

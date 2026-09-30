@@ -49,3 +49,9 @@ def test_norma_transversal_nao_tem_setor():
 def test_serie_curta_nao_gera_tendencia():
     short = {"months": dict(list(DATA["months"].items())[:6])}
     assert TrendService(short).for_norms(["NR-18"]) == []
+
+
+def test_usa_so_a_janela_completa_da_serie():
+    windowed = {**DATA, "complete_from": "202503", "complete_until": "202610"}
+    months, values, _ = sector_series(windowed, ["41"])
+    assert months[0] == "202503" and months[-1] == "202610"
