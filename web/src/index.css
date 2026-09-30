@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Semi Condensed", "Barlow", ui-sans-serif, sans-serif;
+
+  --color-concreto: #eef0ee;
+  --color-papel: #fbfcfb;
+  --color-grafite: #1c2321;
+  --color-aco: #5c6663;
+  --color-linha: #d3d8d5;
+  --color-sinal: #f2c200;
+  --color-seguro: #1e7a4c;
+  --color-perigo: #c0362c;
+  --color-atencao: #a8650f;
+}
+
+html {
+  background: var(--color-concreto);
+  color: var(--color-grafite);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-sinal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .chegada {
+    animation: chegada 180ms ease-out both;
+  }
+}
+
+@keyframes chegada {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
