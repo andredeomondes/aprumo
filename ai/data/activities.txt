@@ -1,0 +1,64 @@
+Troca de luminária em poste a 7 metros, perto da rede de baixa tensão
+Manutenção de subestação com desligamento e bloqueio
+Instalação de quadro de distribuição energizado
+Manutenção em painel elétrico de média tensão
+Troca de motor elétrico de esteira transportadora
+Limpeza interna de tanque de armazenamento de combustível
+Inspeção dentro de galeria subterrânea
+Solda dentro de silo com acesso por escotilha
+Resgate de trabalhador em espaço confinado
+Entrada em vaso de pressão para inspeção interna
+Montagem de andaime para pintura de fachada
+Limpeza de calhas no telhado do galpão
+Instalação de linha de vida em cobertura metálica
+Trabalho em plataforma elevatória móvel
+Manutenção de telhado com telhas frágeis
+Manutenção corretiva em prensa hidráulica
+Troca de ferramenta em injetora de plástico
+Ajuste de sensor de segurança em máquina
+Operação de torno mecânico
+Limpeza de máquina com partes móveis
+Movimentação de bobinas com ponte rolante
+Operação de empilhadeira no armazém
+Içamento de carga com guindaste
+Carregamento de caminhão com paleteira elétrica
+Inspeção periódica em caldeira a vapor
+Teste hidrostático em vaso de pressão
+Manutenção em linha de vapor de alta pressão
+Solda em tubulação de gás inflamável
+Abastecimento de tanque de combustível
+Transferência de solvente entre recipientes
+Trabalho a quente em área classificada
+Concretagem de laje na obra de ampliação
+Escavação de vala para tubulação
+Demolição de parede em reforma da fábrica
+Montagem de estrutura metálica
+Levantamento manual de caixas durante o turno
+Posto de trabalho com digitação contínua
+Linha de montagem com movimentos repetitivos
+Medição de ruído e calor no setor de fundição
+Aplicação de produto químico corrosivo
+Exposição a poeira de sílica no corte de pedra
+Operação de forno industrial
+Inspeção de extintores e hidrantes
+Simulado de abandono de área em caso de incêndio
+Sinalização de tubulações e produtos químicos
+Entrega de EPI para equipe nova
+Reforma de vestiários e refeitório
+Descarte de resíduos industriais perigosos
+Detonação de rochas com explosivos na mineração
+Armazenamento de explosivos em paiol
+Operação de britador na pedreira
+Aplicação de agrotóxico na lavoura
+Operação de trator e implementos agrícolas
+Descarte de perfurocortantes no hospital
+Manipulação de quimioterápicos na farmácia hospitalar
+Solda no casco de navio em estaleiro
+Descarga de contêineres no porto
+Trabalho a bordo de embarcação
+Desossa de carne no frigorífico
+Trabalho em câmara fria
+Embarque de trabalhadores em plataforma de petróleo
+Coleta de lixo com caminhão compactador
+Varrição de via pública
+Trabalho a céu aberto sob sol intenso
