@@ -1,6 +1,13 @@
+export interface NormEntry {
+  code: string;
+  title: string;
+  items: number;
+}
+
 export interface SuggestionData {
   activities: string[];
   terms: string[];
+  norms?: NormEntry[];
 }
 
 export interface Suggestion {

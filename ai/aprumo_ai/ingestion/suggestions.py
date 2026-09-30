@@ -1,4 +1,4 @@
-"""Gera o arquivo estático do autocompletar: atividades comuns e termos técnicos das NRs.
+"""Gera o arquivo estático do front: atividades comuns, termos técnicos e o catálogo das NRs.
 
 Uso: python -m aprumo_ai.ingestion.suggestions
 Sai em web/public/suggestions.json. O filtro roda no navegador: sem latência, sem cota.
@@ -9,6 +9,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
+from aprumo_ai.domain import NORM_TITLES
 from aprumo_ai.retrieval import load_corpus
 from aprumo_ai.text import strip_accents
 
@@ -52,8 +53,11 @@ def main() -> None:
     activities = [line.strip() for line in ACTIVITIES.read_text(encoding="utf-8").splitlines() if line.strip()]
     terms = technical_terms([r.text for r in requirements if not r.revoked])
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({"activities": activities, "terms": terms}, ensure_ascii=False), encoding="utf-8")
-    print(f"{len(activities)} atividades, {len(terms)} termos → {OUT}")
+    counts = {code: sum(r.norm == code and not r.revoked for r in requirements) for code in NORM_TITLES}
+    norms = [{"code": code, "title": title, "items": counts[code]} for code, title in NORM_TITLES.items()]
+    payload = {"activities": activities, "terms": terms, "norms": norms}
+    OUT.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    print(f"{len(activities)} atividades, {len(terms)} termos, {len(norms)} normas → {OUT}")
 
 
 if __name__ == "__main__":

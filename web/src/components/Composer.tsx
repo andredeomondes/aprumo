@@ -1,7 +1,6 @@
-import { useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
-import type { Phase } from "../state/assessment";
-import { applySuggestion, suggest, type Suggestion } from "../suggest";
-import { useSuggestionData } from "../useSuggestionData";
+import { Send } from "lucide-react";
+import { useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { applySuggestion, suggest, type Suggestion, type SuggestionData } from "../suggest";
 
 const EXAMPLES = [
   "Troca de luminária em poste a 7 metros, perto da rede de baixa tensão",
@@ -10,17 +9,18 @@ const EXAMPLES = [
 ];
 
 interface Props {
-  phase: Phase;
+  describing: boolean;
   disabled: boolean;
+  data: SuggestionData;
   onSend: (text: string) => void;
 }
 
-export function Composer({ phase, disabled, onSend }: Props) {
+/** Campo de mensagem com autocompletar local: atividades comuns e termos técnicos das NRs. */
+export function Composer({ describing, disabled, data, onSend }: Props) {
   const [text, setText] = useState("");
   const [active, setActive] = useState(-1);
   const [dismissed, setDismissed] = useState(false);
-  const data = useSuggestionData();
-  const describing = phase === "describe";
+  const field = useRef<HTMLTextAreaElement>(null);
   const minLength = describing ? 10 : 1;
   const canSend = !disabled && text.trim().length >= minLength;
 
@@ -40,15 +40,14 @@ export function Composer({ phase, disabled, onSend }: Props) {
     setText(applySuggestion(text, suggestion));
     setActive(-1);
     setDismissed(suggestion.kind === "activity");
+    field.current?.focus();
   }
 
   function submit(event?: FormEvent) {
     event?.preventDefault();
     if (!canSend) return;
     onSend(text.trim());
-    setText("");
-    setActive(-1);
-    setDismissed(false);
+    change("");
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -70,56 +69,44 @@ export function Composer({ phase, disabled, onSend }: Props) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-2.5">
+    <div className="composer-area">
       {describing && !disabled && text.length === 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="examples" aria-label="Exemplos de atividade">
           {EXAMPLES.map((example) => (
-            <button
-              key={example}
-              type="button"
-              onClick={() => change(example)}
-              className="rounded-md border border-linha bg-papel px-2.5 py-1 text-left text-sm text-aco hover:border-aco hover:text-grafite"
-            >
+            <button key={example} type="button" onClick={() => change(example)}>
               {example}
             </button>
           ))}
         </div>
       )}
-      <div className="relative flex items-end gap-2">
+      {open && (
+        <ul id="sugestoes" className="suggestions" role="listbox" aria-label="Sugestões">
+          {suggestions.map((suggestion, index) => (
+            <li
+              key={`${suggestion.kind}-${suggestion.label}`}
+              id={`sugestao-${index}`}
+              role="option"
+              aria-selected={index === active}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                accept(suggestion);
+              }}
+              onMouseEnter={() => setActive(index)}
+            >
+              <span className="kind">{suggestion.kind === "activity" ? "Atividade" : "Termo"}</span>
+              <span>{suggestion.label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form className="composer" onSubmit={submit}>
         <label className="sr-only" htmlFor="mensagem">
           {describing ? "Descrição da atividade" : "Sua resposta"}
         </label>
-        {open && (
-          <ul
-            id="sugestoes"
-            role="listbox"
-            aria-label="Sugestões"
-            className="absolute bottom-full left-0 right-24 mb-1.5 max-h-64 overflow-auto rounded-md border border-grafite bg-papel py-1 shadow-[0_6px_20px_rgb(28_35_33/0.12)]"
-          >
-            {suggestions.map((suggestion, index) => (
-              <li
-                key={`${suggestion.kind}-${suggestion.label}`}
-                id={`sugestao-${index}`}
-                role="option"
-                aria-selected={index === active}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  accept(suggestion);
-                }}
-                onMouseEnter={() => setActive(index)}
-                className={`flex cursor-pointer items-baseline gap-2 px-3 py-1.5 ${index === active ? "bg-concreto" : ""}`}
-              >
-                <span className="w-16 shrink-0 text-xs text-aco">
-                  {suggestion.kind === "activity" ? "Atividade" : "Termo"}
-                </span>
-                <span>{suggestion.label}</span>
-              </li>
-            ))}
-          </ul>
-        )}
         <textarea
           id="mensagem"
-          rows={describing ? 3 : 2}
+          ref={field}
+          rows={describing ? 2 : 1}
           value={text}
           maxLength={2000}
           disabled={disabled}
@@ -132,20 +119,15 @@ export function Composer({ phase, disabled, onSend }: Props) {
           onKeyDown={onKeyDown}
           onBlur={() => setDismissed(true)}
           onFocus={() => setDismissed(false)}
-          placeholder={describing ? "Ex.: troca de luminária em poste a 7 metros" : "Responda com o que foi ou será feito"}
-          className="min-h-[3.25rem] flex-1 resize-none rounded-md border border-linha bg-papel px-3 py-2 text-grafite placeholder:text-aco/70 focus:border-grafite focus:outline-none disabled:opacity-60"
+          placeholder={describing ? "Descreva a atividade: o que, onde e com quais equipamentos" : "Detalhe a resposta, se quiser"}
         />
-        <button
-          type="submit"
-          disabled={!canSend}
-          className="h-[3.25rem] rounded-md bg-grafite px-4 font-display text-base font-semibold text-papel enabled:hover:bg-black disabled:opacity-40"
-        >
-          {describing ? "Analisar" : "Responder"}
+        <button type="submit" disabled={!canSend} aria-label={describing ? "Analisar atividade" : "Enviar resposta"}>
+          <Send size={18} />
         </button>
-      </div>
-      {open && (
-        <p className="text-xs text-aco">Setas para escolher, Tab para aceitar, Esc para fechar.</p>
-      )}
-    </form>
+      </form>
+      <p className="composer-help">
+        {open ? "Setas para escolher, Tab para aceitar, Esc para fechar." : "Enter envia, Shift+Enter quebra a linha."}
+      </p>
+    </div>
   );
 }

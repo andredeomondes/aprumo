@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { SuggestionData } from "./suggest";
 
-const EMPTY: SuggestionData = { activities: [], terms: [] };
+const EMPTY: SuggestionData = { activities: [], terms: [], norms: [] };
 
 /** Arquivo estático gerado pela ingestão; se não carregar, o chat funciona sem sugestões. */
 export function useSuggestionData(): SuggestionData {

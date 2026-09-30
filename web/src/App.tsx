@@ -1,94 +1,172 @@
-import { useEffect, useRef, useState } from "react";
+import { Activity, BookOpen, Bot, FileCheck2, MessageSquare, Plus, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { BrandMark } from "./components/BrandMark";
+import { ContextRail } from "./components/ContextRail";
+import { ConversationPane } from "./components/ConversationPane";
 import { Dashboard } from "./components/Dashboard";
-import { Composer } from "./components/Composer";
-import { MessageBubble } from "./components/MessageBubble";
-import { ReportCard } from "./components/ReportCard";
+import { NormsCatalog } from "./components/NormsCatalog";
+import { ReportPane } from "./components/ReportPane";
 import { useAssessment } from "./state/useAssessment";
+import { useSuggestionData } from "./useSuggestionData";
 
-function useHash(): string {
-  const [hash, setHash] = useState(window.location.hash);
+type Page = "conferencia" | "normas" | "painel";
+type MobileView = "conversation" | "context" | "report";
+
+function usePage(): Page {
+  const read = (): Page => {
+    const hash = window.location.hash.replace("#", "");
+    return hash === "normas" || hash === "painel" ? hash : "conferencia";
+  };
+  const [page, setPage] = useState<Page>(read);
   useEffect(() => {
-    const update = () => setHash(window.location.hash);
+    const update = () => setPage(read());
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
   }, []);
-  return hash;
+  return page;
 }
 
 export default function App() {
-  const onDashboard = useHash() === "#painel";
+  const page = usePage();
+  const data = useSuggestionData();
   const { state, busy, slow, send, retry, downloadPdf, reset } = useAssessment();
-  const endRef = useRef<HTMLDivElement>(null);
+  const [mobileView, setMobileView] = useState<MobileView>("conversation");
+  const [contextCollapsed, setContextCollapsed] = useState(false);
+  const [reportCollapsed, setReportCollapsed] = useState(false);
+  const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
+  const showError = useCallback((text: string) => setNotice({ text, error: true }), []);
 
+  // Relatório pronto: no celular, leva a pessoa direto para ele.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [state.messages.length, state.phase, busy]);
+    if (state.phase === "done") setMobileView("report");
+  }, [state.phase]);
 
-  const canRetry = state.phase === "evaluating" && state.failed;
-  const composing = state.phase === "describe" || state.phase === "asking" || state.phase === "analyzing";
+  function startNew() {
+    reset();
+    setMobileView("conversation");
+    window.location.hash = "";
+  }
+
+  const nav = [
+    { page: "conferencia", label: "Conferência", icon: MessageSquare, href: "#" },
+    { page: "normas", label: "Normas (NRs)", icon: BookOpen, href: "#normas" },
+    { page: "painel", label: "Painel", icon: Activity, href: "#painel" },
+  ] as const;
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-3xl flex-col px-4">
-      <header className="flex items-baseline justify-between gap-4 border-b-2 border-grafite pb-3 pt-5">
-        <div>
-          <h1 className="font-display text-[1.75rem] font-bold leading-none">Aprumo</h1>
-          <p className="mt-1 text-sm text-aco">Conferência de requisitos das NRs antes da atividade</p>
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Ir para o conteúdo
+      </a>
+
+      <aside className="sidebar" aria-label="Navegação principal">
+        <div className="brand-lockup">
+          <BrandMark />
+          <strong>Aprumo</strong>
         </div>
-        <nav className="flex gap-4 text-sm">
-          {onDashboard ? (
-            <a href="#" className="text-aco underline underline-offset-4 hover:text-grafite">Voltar à conferência</a>
-          ) : (
-            <>
-              {state.phase !== "describe" && (
-                <button type="button" onClick={reset} className="text-aco underline underline-offset-4 hover:text-grafite">
-                  Recomeçar
-                </button>
-              )}
-              <a href="#painel" className="text-aco underline underline-offset-4 hover:text-grafite">Painel</a>
-            </>
-          )}
+        <button className="new-conference" onClick={startNew}>
+          <Plus size={16} />
+          <span>Nova conferência</span>
+        </button>
+        <nav>
+          {nav.map((item) => (
+            <a key={item.page} href={item.href} aria-current={page === item.page ? "page" : undefined}>
+              <item.icon size={17} />
+              <span>{item.label}</span>
+            </a>
+          ))}
+        </nav>
+        <p className="sidebar-foot">
+          Apoio à conferência de requisitos das NRs. Não substitui profissional habilitado nem a leitura da norma.
+        </p>
+      </aside>
+
+      <header className="mobile-header">
+        <div className="brand-lockup">
+          <BrandMark compact />
+          <strong>Aprumo</strong>
+        </div>
+        {page === "conferencia" ? (
+          <div className="mobile-switch" role="group" aria-label="Alternar área">
+            {(["conversation", "context", "report"] as MobileView[]).map((view) => (
+              <button
+                key={view}
+                aria-pressed={mobileView === view}
+                className={mobileView === view ? "active" : ""}
+                onClick={() => setMobileView(view)}
+              >
+                {view === "conversation" ? "Conversa" : view === "context" ? "Andamento" : "Relatório"}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span />
+        )}
+        <nav className="mobile-menu" aria-label="Seções">
+          <a className="icon-button" href="#" aria-label="Conferência">
+            <FileCheck2 size={16} />
+          </a>
+          <a className="icon-button" href="#normas" aria-label="Normas">
+            <BookOpen size={16} />
+          </a>
+          <a className="icon-button" href="#painel" aria-label="Painel">
+            <Activity size={16} />
+          </a>
         </nav>
       </header>
 
-      {onDashboard ? (
-        <main className="flex-1 py-5">
-          <Dashboard />
+      {page === "normas" && (
+        <main id="main-content">
+          <NormsCatalog norms={data.norms ?? []} />
         </main>
-      ) : (
-      <main className="flex-1 space-y-4 py-5" aria-live="polite">
-        {state.messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
-        ))}
-
-        {busy && (
-          <p className="text-aco">
-            {state.phase === "analyzing" ? "Consultando as normas…" : "Montando o relatório…"}
-            {slow && " O servidor gratuito pode levar até um minuto para acordar na primeira consulta."}
-          </p>
-        )}
-
-        {canRetry && (
-          <button
-            type="button"
-            onClick={retry}
-            className="rounded-md border border-grafite px-4 py-2 font-display font-semibold hover:bg-papel"
-          >
-            Tentar de novo
-          </button>
-        )}
-
-        {state.report && <ReportCard report={state.report} onDownload={downloadPdf} onRestart={reset} />}
-        <div ref={endRef} />
-      </main>
+      )}
+      {page === "painel" && (
+        <main id="main-content">
+          <Dashboard onError={showError} />
+        </main>
+      )}
+      {page === "conferencia" && (
+        <main
+          id="main-content"
+          className={`workspace ${contextCollapsed ? "context-collapsed" : ""} ${reportCollapsed ? "report-collapsed" : ""}`}
+        >
+          <ConversationPane
+            state={state}
+            busy={busy}
+            slow={slow}
+            data={data}
+            mobileActive={mobileView === "conversation"}
+            onSend={send}
+            onRetry={retry}
+            onReset={startNew}
+          />
+          <ContextRail
+            state={state}
+            collapsed={contextCollapsed}
+            mobileActive={mobileView === "context"}
+            onCollapse={setContextCollapsed}
+          />
+          <ReportPane
+            state={state}
+            collapsed={reportCollapsed}
+            mobileActive={mobileView === "report"}
+            onCollapse={setReportCollapsed}
+            onDownload={downloadPdf}
+            onReset={startNew}
+            onError={showError}
+          />
+        </main>
       )}
 
-      <footer className="sticky bottom-0 -mx-4 border-t border-linha bg-concreto px-4 pb-4 pt-3">
-        {composing && !onDashboard && <Composer phase={state.phase} disabled={busy} onSend={send} />}
-        <p className="mt-2 text-xs text-aco">
-          Apoio à conferência. Não substitui profissional habilitado nem a leitura da norma. Não informe dados
-          pessoais: o que parecer CPF, e-mail ou telefone é mascarado antes da análise.
-        </p>
-      </footer>
+      {notice && (
+        <div className={`toast ${notice.error ? "error" : ""}`} role={notice.error ? "alert" : "status"}>
+          <Bot size={16} />
+          <span>{notice.text}</span>
+          <button aria-label="Fechar aviso" onClick={() => setNotice(null)}>
+            <X size={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
