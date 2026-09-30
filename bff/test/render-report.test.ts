@@ -19,6 +19,13 @@ const report: Report = {
   corpus_date: "2026-09-30",
   generated_at: "2026-09-30T20:00:00+00:00",
   disclaimer: "Não substitui profissional habilitado.",
+  risk_context: [
+    {
+      norm: "NR-18", sector: "Construção", months: ["202506", "202507"], values: [900, 950],
+      last_12m: 11000, previous_12m: 10000, change_pct: 10, deaths_12m: 40,
+      forecast: [960, 970, 980], forecast_beats_naive: true,
+    },
+  ],
 };
 
 describe("renderReportPdf", () => {
@@ -34,5 +41,11 @@ describe("renderReportPdf", () => {
     }));
     const pdf = await renderReportPdf({ ...report, findings: many });
     expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
+  });
+
+  it("inclui o contexto de acidentes do setor", async () => {
+    const withContext = await renderReportPdf(report);
+    const without = await renderReportPdf({ ...report, risk_context: [] });
+    expect(withContext.length).toBeGreaterThan(without.length + 300);
   });
 });

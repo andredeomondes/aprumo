@@ -10,6 +10,7 @@ export class AiServiceError extends Error {
 export interface AiClient {
   analyze(activity: string): Promise<Analysis>;
   evaluate(body: EvaluateBody): Promise<Report>;
+  metrics(): Promise<unknown>;
 }
 
 /** Cliente do serviço de IA. 90 s cobrem o cold start do plano gratuito mais a chamada ao modelo. */
@@ -26,6 +27,20 @@ export class HttpAiClient implements AiClient {
 
   evaluate(body: EvaluateBody): Promise<Report> {
     return this.post("/v1/evaluate", body, ReportSchema);
+  }
+
+  async metrics(): Promise<unknown> {
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/v1/metrics`, {
+        headers: { "x-internal-token": this.token },
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+    } catch {
+      throw new AiServiceError(504, "O serviço de análise demorou a responder.");
+    }
+    if (!res.ok) throw new AiServiceError(502, "Métricas indisponíveis.");
+    return res.json();
   }
 
   private async post<T>(path: string, body: unknown, schema: z.ZodType<T>): Promise<T> {

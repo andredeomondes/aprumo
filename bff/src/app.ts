@@ -57,6 +57,8 @@ export async function buildApp({ aiClient, corsOrigin, rateLimitMax, dailyBudget
     aiClient.evaluate(EvaluateBody.parse(request.body)),
   );
 
+  app.get("/api/metrics", async () => ({ ai: await aiClient.metrics(), budget: budget.usage() }));
+
   app.post("/api/report.pdf", async (request, reply) => {
     const pdf = await renderPdf(ReportSchema.parse(request.body));
     return reply

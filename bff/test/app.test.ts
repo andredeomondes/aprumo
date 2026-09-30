@@ -15,7 +15,12 @@ const report: Report = {
 };
 
 function fakeAi(overrides: Partial<AiClient> = {}): AiClient {
-  return { analyze: async () => analysis, evaluate: async () => report, ...overrides };
+  return {
+    analyze: async () => analysis,
+    evaluate: async () => report,
+    metrics: async () => ({ counters: { "llm{outcome=ok,provider=groq}": 3 } }),
+    ...overrides,
+  };
 }
 
 function app(ai = fakeAi(), rateLimitMax = 100, dailyBudget = 1000) {
@@ -106,5 +111,13 @@ describe("bff", () => {
     await instance.inject({ method: "POST", url: "/api/report.pdf", payload: report });
     const res = await instance.inject({ method: "POST", url: "/api/analyze", payload: ACTIVITY });
     expect(res.statusCode).toBe(200);
+  });
+
+  it("repassa as métricas do serviço de IA com o uso do orçamento", async () => {
+    const instance = await app(fakeAi(), 100, 5);
+    await instance.inject({ method: "POST", url: "/api/analyze", payload: ACTIVITY });
+    const body = (await instance.inject({ method: "GET", url: "/api/metrics" })).json();
+    expect(body.ai.counters["llm{outcome=ok,provider=groq}"]).toBe(3);
+    expect(body.budget).toEqual({ limit: 5, used: 1 });
   });
 });

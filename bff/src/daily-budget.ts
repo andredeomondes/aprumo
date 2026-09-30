@@ -11,6 +11,10 @@ export class DailyBudget {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
+  usage(): { limit: number; used: number } {
+    return { limit: this.limit, used: this.day === this.now().toISOString().slice(0, 10) ? this.used : 0 };
+  }
+
   tryConsume(): boolean {
     const today = this.now().toISOString().slice(0, 10);
     if (today !== this.day) {

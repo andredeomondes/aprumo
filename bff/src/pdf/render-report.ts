@@ -1,5 +1,5 @@
 import PDFDocument from "pdfkit";
-import type { Finding, Report } from "../schemas.js";
+import type { Finding, Report, SectorTrend } from "../schemas.js";
 
 type Status = Finding["status"];
 
@@ -19,6 +19,43 @@ const COLOR: Record<Status, string> = {
 
 // Pendências primeiro: é o que o profissional precisa resolver antes de liberar a atividade.
 const ORDER: Status[] = ["pendente", "decisao_humana", "nao_informado", "atendido"];
+
+const number = new Intl.NumberFormat("pt-BR");
+
+function monthLabel(yyyymm: string): string {
+  return `${yyyymm.slice(4, 6)}/${yyyymm.slice(0, 4)}`;
+}
+
+/** Barras dos últimos meses desenhadas direto no PDF, sem biblioteca de gráfico. */
+function drawBars(doc: PDFKit.PDFDocument, values: number[], x: number, y: number, width: number, height: number) {
+  const max = Math.max(...values, 1);
+  const gap = 2;
+  const barWidth = (width - gap * (values.length - 1)) / values.length;
+  values.forEach((value, index) => {
+    const barHeight = Math.max(1, (value / max) * height);
+    doc.rect(x + index * (barWidth + gap), y + height - barHeight, barWidth, barHeight).fill("#5c6663");
+  });
+  doc.fillColor("#101828");
+}
+
+function drawTrend(doc: PDFKit.PDFDocument, trend: SectorTrend) {
+  const direction = trend.change_pct >= 0 ? "alta" : "queda";
+  doc.moveDown(0.6).font("Helvetica-Bold").fontSize(10).fillColor("#101828").text(`${trend.norm} · ${trend.sector}`);
+  doc.font("Helvetica").fontSize(9).fillColor("#475467").text(
+    `${number.format(trend.last_12m)} acidentes típicos nos últimos 12 meses ` +
+      `(${direction} de ${Math.abs(trend.change_pct).toFixed(1).replace(".", ",")}% sobre os 12 anteriores), ` +
+      `${number.format(trend.deaths_12m)} com óbito.`,
+  );
+  const top = doc.y + 4;
+  drawBars(doc, trend.values, doc.page.margins.left, top, 260, 36);
+  doc.y = top + 40;
+  doc.fontSize(8).fillColor("#475467").text(
+    `${monthLabel(trend.months[0])} a ${monthLabel(trend.months[trend.months.length - 1])}` +
+      (trend.forecast_beats_naive
+        ? ` · projeção para os próximos 3 meses: ${trend.forecast.map((v) => number.format(v)).join(", ")}`
+        : " · sem projeção: o modelo não superou o ingênuo no teste"),
+  );
+}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Bahia" });
@@ -50,6 +87,13 @@ export function renderReportPdf(report: Report): Promise<Buffer> {
 
     section("Normas aplicáveis");
     for (const norm of report.norms) doc.font("Helvetica").fontSize(10).text(`• ${norm.norm} — ${norm.title}`);
+
+    if (report.risk_context.length > 0) {
+      section("Contexto de acidentes no setor");
+      doc.font("Helvetica").fontSize(8).fillColor("#475467")
+        .text("Fonte: INSS, Comunicações de Acidente de Trabalho (dados abertos, CC-BY). Mês de processamento da CAT.");
+      report.risk_context.forEach((trend) => drawTrend(doc, trend));
+    }
 
     section("Resumo");
     const counts = ORDER.map((s) => `${LABEL[s]}: ${report.findings.filter((f) => f.status === s).length}`);
