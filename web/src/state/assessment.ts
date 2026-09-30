@@ -1,4 +1,4 @@
-import type { Analysis, QA, Report } from "../types";
+import type { Analysis, QA, Report, SectorTrend } from "../types";
 
 export type Phase = "describe" | "analyzing" | "asking" | "evaluating" | "done";
 
@@ -10,6 +10,7 @@ export interface ChatMessage {
   refs?: string[];
   step?: number;
   total?: number;
+  trends?: SectorTrend[];
 }
 
 export interface State {
@@ -76,7 +77,12 @@ export function reducer(state: State, action: Action): State {
 
     case "analysis": {
       const { analysis } = action;
-      const messages = append(state.messages, { role: "assistant", kind: "summary", text: analysis.message });
+      const messages = append(state.messages, {
+        role: "assistant",
+        kind: "summary",
+        text: analysis.message,
+        trends: analysis.risk_context ?? [],
+      });
       if (analysis.status === "sem_base" || analysis.questions.length === 0) {
         return { ...state, phase: "describe", messages };
       }

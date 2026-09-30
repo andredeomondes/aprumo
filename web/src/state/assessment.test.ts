@@ -11,6 +11,12 @@ const analysis: Analysis = {
     { id: "q1", text: "Há linha de vida?", refs: ["NR-35 item 35.5.1"] },
     { id: "q2", text: "Houve análise de risco?", refs: ["NR-35 item 35.4.5"] },
   ],
+  risk_context: [
+    {
+      norm: "NR-18", sector: "Construção", months: ["202601"], values: [10], last_12m: 120, previous_12m: 100,
+      change_pct: 20, deaths_12m: 3, forecast: [11, 12, 13], forecast_beats_naive: true,
+    },
+  ],
 };
 
 const report = { findings: [] } as unknown as Report;
@@ -27,6 +33,7 @@ describe("conversa", () => {
     const state = reducer(described, { type: "analysis", analysis });
     expect(state.phase).toBe("asking");
     expect(state.messages.at(-1)).toMatchObject({ text: "Há linha de vida?", kind: "question", step: 1, total: 2 });
+    expect(state.messages.at(-2)?.trends?.[0].sector).toBe("Construção");
   });
 
   it("última resposta leva à avaliação com todas as respostas", () => {

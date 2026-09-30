@@ -1,5 +1,6 @@
 import type { ChatMessage } from "../state/assessment";
 import { Plaqueta } from "./Plaqueta";
+import { TrendCard } from "./TrendCard";
 
 export function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === "user") {
@@ -34,6 +35,18 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
             ))}
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (message.kind === "summary" && message.trends && message.trends.length > 0) {
+    return (
+      <div className="chegada space-y-2">
+        <p className="max-w-[65ch] font-medium">{message.text}</p>
+        <p className="text-sm text-aco">Acidentes de trabalho no setor, segundo as CATs do INSS:</p>
+        {message.trends.map((trend) => (
+          <TrendCard key={trend.norm} trend={trend} />
+        ))}
       </div>
     );
   }

@@ -1,10 +1,22 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Dashboard } from "./components/Dashboard";
 import { Composer } from "./components/Composer";
 import { MessageBubble } from "./components/MessageBubble";
 import { ReportCard } from "./components/ReportCard";
 import { useAssessment } from "./state/useAssessment";
 
+function useHash(): string {
+  const [hash, setHash] = useState(window.location.hash);
+  useEffect(() => {
+    const update = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  return hash;
+}
+
 export default function App() {
+  const onDashboard = useHash() === "#painel";
   const { state, busy, slow, send, retry, downloadPdf, reset } = useAssessment();
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -22,13 +34,27 @@ export default function App() {
           <h1 className="font-display text-[1.75rem] font-bold leading-none">Aprumo</h1>
           <p className="mt-1 text-sm text-aco">Conferência de requisitos das NRs antes da atividade</p>
         </div>
-        {state.phase !== "describe" && (
-          <button type="button" onClick={reset} className="text-sm text-aco underline underline-offset-4 hover:text-grafite">
-            Recomeçar
-          </button>
-        )}
+        <nav className="flex gap-4 text-sm">
+          {onDashboard ? (
+            <a href="#" className="text-aco underline underline-offset-4 hover:text-grafite">Voltar à conferência</a>
+          ) : (
+            <>
+              {state.phase !== "describe" && (
+                <button type="button" onClick={reset} className="text-aco underline underline-offset-4 hover:text-grafite">
+                  Recomeçar
+                </button>
+              )}
+              <a href="#painel" className="text-aco underline underline-offset-4 hover:text-grafite">Painel</a>
+            </>
+          )}
+        </nav>
       </header>
 
+      {onDashboard ? (
+        <main className="flex-1 py-5">
+          <Dashboard />
+        </main>
+      ) : (
       <main className="flex-1 space-y-4 py-5" aria-live="polite">
         {state.messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
@@ -54,9 +80,10 @@ export default function App() {
         {state.report && <ReportCard report={state.report} onDownload={downloadPdf} onRestart={reset} />}
         <div ref={endRef} />
       </main>
+      )}
 
       <footer className="sticky bottom-0 -mx-4 border-t border-linha bg-concreto px-4 pb-4 pt-3">
-        {composing && <Composer phase={state.phase} disabled={busy} onSend={send} />}
+        {composing && !onDashboard && <Composer phase={state.phase} disabled={busy} onSend={send} />}
         <p className="mt-2 text-xs text-aco">
           Apoio à conferência. Não substitui profissional habilitado nem a leitura da norma. Não informe dados
           pessoais: o que parecer CPF, e-mail ou telefone é mascarado antes da análise.

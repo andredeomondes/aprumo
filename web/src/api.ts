@@ -36,6 +36,17 @@ export const api = {
     return (await request("/api/evaluate", { activity, requirements, answers })).json();
   },
 
+  async metrics(): Promise<unknown> {
+    let response: Response;
+    try {
+      response = await fetch(`${BASE}/api/metrics`);
+    } catch {
+      throw new Error(FALLBACK_ERROR);
+    }
+    if (!response.ok) throw new Error("Métricas indisponíveis no momento.");
+    return response.json();
+  },
+
   async reportPdf(report: Report): Promise<Blob> {
     return (await request("/api/report.pdf", report)).blob();
   },

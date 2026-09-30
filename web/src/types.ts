@@ -21,12 +21,26 @@ export interface Question {
   refs: string[];
 }
 
+export interface SectorTrend {
+  norm: string;
+  sector: string;
+  months: string[];
+  values: number[];
+  last_12m: number;
+  previous_12m: number;
+  change_pct: number;
+  deaths_12m: number;
+  forecast: number[];
+  forecast_beats_naive: boolean;
+}
+
 export interface Analysis {
   status: "ok" | "sem_base";
   message: string;
   norms: NormHit[];
   requirements: Requirement[];
   questions: Question[];
+  risk_context: SectorTrend[];
 }
 
 export interface QA {
@@ -50,4 +64,5 @@ export interface Report {
   corpus_date: string;
   generated_at: string;
   disclaimer: string;
+  risk_context: SectorTrend[];
 }
