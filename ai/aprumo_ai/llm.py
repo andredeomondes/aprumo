@@ -88,6 +88,9 @@ class OpenAICompatibleLLM:
             raise LLMError(f"{self.name}: limite de taxa", rate_limited=True) from exc
         except openai.APIError as exc:
             raise LLMError(f"{self.name}: {type(exc).__name__}") from exc
+        # Alguns provedores devolvem HTTP 200 com corpo de erro e sem choices.
+        if not getattr(completion, "choices", None):
+            raise LLMError(f"{self.name}: resposta sem conteúdo")
         return _parse(schema, completion.choices[0].message.content)
 
 

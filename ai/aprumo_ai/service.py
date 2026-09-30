@@ -9,6 +9,8 @@ NO_BASIS = (
     "Não encontrei base nas normas do corpus para essa descrição. "
     "Descreva a atividade de trabalho: o que será feito, onde e com quais equipamentos."
 )
+# O prompt pede no máximo duas, mas prompt não é garantia: o limite vale no código.
+MAX_NORMS = 3
 NOT_COVERED = "As respostas não trouxeram informação sobre este item."
 
 
@@ -54,7 +56,7 @@ class AssessmentService:
             return Analysis(status="sem_base", message=NO_BASIS)
 
         query = f"{clean} {expansion.terms}"
-        chosen = [code for code in dict.fromkeys(expansion.norms) if code in NORM_TITLES]
+        chosen = [code for code in dict.fromkeys(expansion.norms) if code in NORM_TITLES][:MAX_NORMS]
         hits, norms = self._retrieve(query, chosen)
         if not hits or max(h.score for h in hits) < self._min_score:
             return Analysis(status="sem_base", message=NO_BASIS)

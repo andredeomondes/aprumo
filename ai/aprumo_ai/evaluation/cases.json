@@ -140,5 +140,66 @@
   "norms": [
    "NR-09"
   ]
+ },
+ {
+  "activity": "Detonação de rochas com explosivos na frente de lavra da mina",
+  "norms": [
+   "NR-22",
+   "NR-19"
+  ]
+ },
+ {
+  "activity": "Aplicação de agrotóxico com pulverizador costal na lavoura",
+  "norms": [
+   "NR-31"
+  ]
+ },
+ {
+  "activity": "Descarte de perfurocortantes no centro cirúrgico do hospital",
+  "norms": [
+   "NR-32"
+  ]
+ },
+ {
+  "activity": "Solda no casco de navio em reparo no estaleiro",
+  "norms": [
+   "NR-34"
+  ]
+ },
+ {
+  "activity": "Desossa de carne na linha de produção do frigorífico",
+  "norms": [
+   "NR-36"
+  ]
+ },
+ {
+  "activity": "Troca de turma com embarque de trabalhadores na plataforma de petróleo offshore",
+  "norms": [
+   "NR-37"
+  ]
+ },
+ {
+  "activity": "Coleta de lixo domiciliar com caminhão compactador",
+  "norms": [
+   "NR-38"
+  ]
+ },
+ {
+  "activity": "Descarga de contêineres no cais com portêiner",
+  "norms": [
+   "NR-29"
+  ]
+ },
+ {
+  "activity": "Armazenamento e manuseio de explosivos no paiol da pedreira",
+  "norms": [
+   "NR-19"
+  ]
+ },
+ {
+  "activity": "Reforma dos vestiários e refeitório dos funcionários",
+  "norms": [
+   "NR-24"
+  ]
  }
 ]

@@ -119,3 +119,19 @@ def test_registra_qual_provedor_respondeu():
     chain = FallbackLLM([Scripted("a", [LLMError("x")]), Scripted("b", [GOOD])])
     chain.generate(QueryExpansion, "s", "p", 50)
     assert chain.last_provider == "b"
+
+
+class EmptyCompletion:
+    choices = None
+
+
+def test_resposta_200_sem_choices_vira_llm_error():
+    class Client:
+        class chat:
+            class completions:
+                @staticmethod
+                def create(**kwargs):
+                    return EmptyCompletion()
+
+    with pytest.raises(LLMError):
+        OpenAICompatibleLLM("vazio", "m", client=Client()).generate(QueryExpansion, "s", "p", max_tokens=50)

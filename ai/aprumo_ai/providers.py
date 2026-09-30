@@ -6,7 +6,8 @@ from aprumo_ai.llm import AnthropicLLM, OpenAICompatibleLLM, StructuredLLM
 
 
 def providers_from_env() -> list[StructuredLLM]:
-    """Ordem medida em 30/09/2026: mais rápido e estável primeiro. Só entra quem tem chave."""
+    """Ordem medida em 30/09/2026: mais rápido e estável primeiro. Só entra quem tem chave.
+    O gpt-oss-20b da Groq saiu da cadeia: falhou em 10 de 10 gerações de JSON na avaliação."""
     env = os.environ.get
     chain: list[StructuredLLM] = []
     if key := env("GROQ_API_KEY"):
@@ -17,9 +18,6 @@ def providers_from_env() -> list[StructuredLLM]:
             "gemini", env("GEMINI_MODEL", "gemini-flash-lite-latest"),
             base_url="https://generativelanguage.googleapis.com/v1beta/openai/", api_key=key,
         ))
-    if key := env("GROQ_API_KEY"):
-        base = "https://api.groq.com/openai/v1"
-        chain.append(OpenAICompatibleLLM("groq:gpt-oss", "openai/gpt-oss-20b", base_url=base, api_key=key))
     if key := env("OPENROUTER_API_KEY"):
         chain.append(OpenAICompatibleLLM(
             "openrouter", env("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free"),

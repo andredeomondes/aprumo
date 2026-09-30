@@ -6,6 +6,7 @@ Com chaves de provedor no ambiente, compara BM25 puro com BM25 + expansão de co
 
 import json
 import sys
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from aprumo_ai.providers import providers_from_env
 from aprumo_ai.reasoner import LLMReasoner, QueryExpansion
 from aprumo_ai.resilience import RuleBasedReasoner
 from aprumo_ai.retrieval import BM25Retriever, load_corpus
-from aprumo_ai.service import AssessmentService
+from aprumo_ai.service import MAX_NORMS, AssessmentService
 
 HERE = Path(__file__).parent
 ROOT = HERE.parents[1]
@@ -27,13 +28,13 @@ OUT_OF_DOMAIN = [
 ]
 
 
-def predict(service: AssessmentService, query: str, expansion: QueryExpansion | None) -> tuple[set[str], float]:
+def predict(service: AssessmentService, query: str, expansion: QueryExpansion | None) -> tuple[list[str], float]:
     """Mesma identificação que o serviço faz em produção."""
-    chosen = [code for code in (expansion.norms if expansion else []) if code in NORM_TITLES]
+    chosen = [code for code in (expansion.norms if expansion else []) if code in NORM_TITLES][:MAX_NORMS]
     text = f"{query} {expansion.terms}" if expansion else query
     hits, norms = service._retrieve(text, chosen)
     top = max((h.score for h in hits), default=0.0)
-    return {n.norm for n in norms} - TRANSVERSAL, top
+    return [n.norm for n in norms if n.norm not in TRANSVERSAL], top
 
 
 def score(pairs: list[tuple[set[str], set[str]]]) -> tuple[float, float, float]:
@@ -55,7 +56,13 @@ def build_modes() -> dict[str, Callable[[str], QueryExpansion | None]]:
         return modes
     providers = providers_from_env()
     if providers:
-        modes["bm25+llm"] = LLMReasoner(FallbackLLM(providers)).expand_query
+        reasoner = LLMReasoner(FallbackLLM(providers))
+
+        def paced(activity: str) -> QueryExpansion:
+            time.sleep(1.5)  # respeita os limites por minuto dos planos gratuitos
+            return reasoner.expand_query(activity)
+
+        modes["bm25+llm"] = paced
     return modes
 
 
@@ -64,19 +71,19 @@ def main() -> None:
     requirements, corpus_date = load_corpus(ROOT / "data" / "corpus.json")
     service = AssessmentService(BM25Retriever(requirements), RuleBasedReasoner(), corpus_date)
 
-    summary = ["| Modo | Precisão | Revocação | F1 | Menor score do 1º item (casos) |", "|---|---:|---:|---:|---:|"]
+    summary = ["| Modo | Norma principal certa | Precisão | Revocação | F1 |", "|---|---:|---:|---:|---:|"]
     errors = ["| Modo | Atividade | Esperado | Previsto |", "|---|---|---|---|"]
     for name, build in build_modes().items():
-        pairs, tops = [], []
+        pairs, principal_hits = [], 0
         for case in cases:
-            predicted, top = predict(service, case["activity"], build(case["activity"]))
-            gold = set(case["norms"])
+            ranked, _ = predict(service, case["activity"], build(case["activity"]))
+            predicted, gold = set(ranked), set(case["norms"])
             pairs.append((predicted, gold))
-            tops.append(top)
+            principal_hits += bool(ranked) and ranked[0] in gold
             if predicted != gold:
                 errors.append(f"| {name} | {case['activity']} | {', '.join(sorted(gold))} | {', '.join(sorted(predicted)) or '—'} |")
         precision, recall, f1 = score(pairs)
-        summary.append(f"| {name} | {precision:.2f} | {recall:.2f} | {f1:.2f} | {min(tops):.1f} |")
+        summary.append(f"| {name} | {principal_hits}/{len(cases)} | {precision:.2f} | {recall:.2f} | {f1:.2f} |")
 
     noise = [f"| {text} | {predict(service, text, None)[1]:.1f} |" for text in OUT_OF_DOMAIN]
     report = "\n".join([

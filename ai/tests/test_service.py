@@ -98,3 +98,11 @@ def test_normas_escolhidas_pelo_modelo_limitam_a_busca():
 def test_norma_fora_do_catalogo_e_ignorada():
     result = service(NormPickingReasoner(["NR-99", "NR-35"])).analyze("Troca de lâmpada em poste a 6 metros")
     assert {n.norm for n in result.norms} == {"NR-35"}
+
+
+def test_no_maximo_tres_normas_mesmo_se_o_modelo_listar_mais():
+    many = ["NR-35", "NR-10", "NR-33", "NR-12"]
+    activity = "Troca de lâmpada em poste, máquina com parada de emergência, espaço confinado"
+    result = service(NormPickingReasoner(many)).analyze(activity)
+    assert len(result.norms) <= 3
+    assert "NR-12" not in {n.norm for n in result.norms}
