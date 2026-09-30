@@ -1,11 +1,10 @@
 """Mede a identificação de normas contra um gabarito escrito à mão.
 
 Uso: python -m aprumo_ai.evaluation [--no-llm]
-Com ANTHROPIC_API_KEY, compara BM25 puro com BM25 + expansão de consulta pelo modelo.
+Com chaves de provedor no ambiente, compara BM25 puro com BM25 + expansão de consulta pelo modelo.
 """
 
 import json
-import os
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -40,12 +39,15 @@ def score(pairs: list[tuple[set[str], set[str]]]) -> tuple[float, float, float]:
 
 def build_modes() -> dict[str, Callable[[str], str]]:
     modes: dict[str, Callable[[str], str]] = {"bm25": lambda activity: activity}
-    if os.environ.get("ANTHROPIC_API_KEY") and "--no-llm" not in sys.argv:
-        import anthropic
+    if "--no-llm" in sys.argv:
+        return modes
+    from aprumo_ai.llm import FallbackLLM
+    from aprumo_ai.providers import providers_from_env
+    from aprumo_ai.reasoner import LLMReasoner
 
-        from aprumo_ai.reasoner import ClaudeReasoner
-
-        reasoner = ClaudeReasoner(anthropic.Anthropic(), os.environ.get("APRUMO_MODEL", "claude-opus-5-5"))
+    providers = providers_from_env()
+    if providers:
+        reasoner = LLMReasoner(FallbackLLM(providers))
         modes["bm25+llm"] = lambda activity: f"{activity} {reasoner.expand_query(activity).terms}"
     return modes
 

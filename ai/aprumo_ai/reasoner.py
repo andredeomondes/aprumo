@@ -83,7 +83,8 @@ class LLMReasoner:
             _Questions,
             f"<atividade>{activity}</atividade>\n<itens>\n{_context(requirements)}\n</itens>\n\n"
             "Escreva de 3 a 6 perguntas objetivas ao responsável pela atividade que permitam verificar "
-            "se os itens acima estão atendidos, priorizando os de maior risco para esta atividade. "
+            "se os itens acima estão atendidos, priorizando os de maior risco para esta atividade e com "
+            "pelo menos uma pergunta para cada norma presente nos itens. "
             "Cada pergunta: id (q1, q2, ...), text (pergunta clara, em linguagem de campo) e refs "
             "(referências exatas, sem colchetes, dos itens que ela verifica).",
             _QUESTIONS_TOKENS,

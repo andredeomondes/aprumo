@@ -27,7 +27,7 @@ bff  Node + Fastify         porta pública: valida contrato (zod), limita taxa,
  │                          gera o PDF, fala com a IA por token interno
  ▼
 ai   Python + FastAPI       ingestão das NRs, busca BM25, anonimização,
-                            orquestração e chamadas ao Claude
+                            orquestração e cadeia de modelos de linguagem
 ```
 
 Cada serviço tem uma responsabilidade. As regras de negócio dependem de interfaces (`Retriever`, `Reasoner`, `AiClient`), não de implementações, então os testes rodam sem rede e sem chave de API.
@@ -39,6 +39,25 @@ Cada serviço tem uma responsabilidade. As regras de negócio dependem de interf
 3. O BM25 recupera os itens; a norma aplicável é a de maior participação na soma dos scores.
 4. O modelo escreve de 3 a 6 perguntas **a partir dos itens recuperados**. Pergunta que cite item fora dessa lista é descartada.
 5. Com as respostas, o modelo classifica cada item (atendido, pendente, não informado, decisão do profissional). Item que o modelo não avaliou vira "não informado"; item inventado é descartado.
+
+## Modelos de linguagem
+
+O raciocínio passa por uma cadeia de provedores gratuitos, todos pela API compatível com a da OpenAI:
+
+| Ordem | Provedor | Modelo padrão | Latência medida |
+|---|---|---|---|
+| 1 | Groq | `qwen/qwen3.8-27b` | ~0,4 s |
+| 2 | Google Gemini | `gemini-flash-lite-latest` | ~0,9 s |
+| 3 | Groq | `openai/gpt-oss-20b` | ~0,8 s |
+| 4 | OpenRouter | `nvidia/nemotron-3-super-120b-a12b:free` | ~3 s |
+| 5 | Mistral | `mistral-small-latest` | — |
+
+- Só entra na cadeia o provedor com chave definida no ambiente; a Anthropic entra por último se houver `ANTHROPIC_API_KEY`.
+- Falha, 429 ou JSON fora do schema passam para o próximo. Quem respondeu 429 fica fora por 60 segundos.
+- Toda resposta é validada por Pydantic, venha de onde vier.
+- Cache por entrada: repetir um exemplo não gasta chamada.
+- Se nenhum provedor responder, regras locais assumem: dicionário de termos de campo, perguntas direto dos itens e avaliação devolvida ao profissional. A aplicação não cai.
+- Economia de tokens: três chamadas por conferência, texto de cada item cortado em 400 caracteres e limite de saída por etapa.
 
 ## Decisões
 
@@ -68,8 +87,11 @@ python -m aprumo_ai.evaluation
 | Modo | Precisão | Revocação | F1 |
 |---|---:|---:|---:|
 | BM25 puro | 0,38 | 0,44 | 0,41 |
+| BM25 + expansão pelo modelo | 0,88 | 0,83 | **0,86** |
 
-O BM25 puro erra porque as normas extensas (NR-12, NR-10) aparecem em quase toda consulta. Outra medição importante: frases fora do domínio ("receita de bolo") recebem score semelhante ao de casos reais, então **o limiar de score não serve como filtro de domínio**. Quem faz esse filtro é o modelo (`is_work_activity`), e o score fica só como piso. O modo com expansão pelo modelo roda com `ANTHROPIC_API_KEY` definida e é registrado em `ai/EVALUATION.md`.
+A expansão da consulta dobra o F1. Os erros restantes são todos do mesmo tipo: em atividades que acionam duas normas, a segunda às vezes fica abaixo do corte de participação (25%). Testei cortes de 15% e 20% e uma busca termo a termo; todos pioraram a precisão mais do que melhoraram a revocação. Como a saída do modelo varia entre execuções, o F1 oscila entre 0,86 e 0,89.
+
+O BM25 puro erra porque as normas extensas (NR-12, NR-10) aparecem em quase toda consulta. Outra medição importante: frases fora do domínio ("receita de bolo") recebem score semelhante ao de casos reais, então **o limiar de score não serve como filtro de domínio**. Quem faz esse filtro é o modelo (`is_work_activity`), e o score fica só como piso. O resultado completo, com os casos que erraram, fica em `ai/EVALUATION.md`.
 
 ## Limitações
 
@@ -82,7 +104,7 @@ O BM25 puro erra porque as normas extensas (NR-12, NR-10) aparecem em quase toda
 
 ## Como rodar localmente
 
-Pré-requisitos: Python 3.12, Node 22 e uma chave da API da Anthropic.
+Pré-requisitos: Python 3.12, Node 22 e ao menos uma chave de provedor (Groq, Gemini, OpenRouter ou Mistral, todos com plano gratuito).
 
 ```bash
 # serviço de IA

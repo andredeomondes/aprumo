@@ -5,6 +5,7 @@ Corpus capturado em 2026-09-30 · 15 casos com gabarito · NR-01 (transversal) f
 | Modo | Precisão | Revocação | F1 | Menor score do 1º item (casos) |
 |---|---:|---:|---:|---:|
 | bm25 | 0.38 | 0.44 | 0.41 | 5.1 |
+| bm25+llm | 0.88 | 0.83 | 0.86 | 12.0 |
 
 ## Score do 1º item em frases fora do domínio (calibra `APRUMO_MIN_SCORE`)
 
@@ -29,3 +30,8 @@ Corpus capturado em 2026-09-30 · 15 casos com gabarito · NR-01 (transversal) f
 | bm25 | Manutenção de subestação com desligamento e bloqueio | NR-10 | NR-12 |
 | bm25 | Resgate de trabalhador em poço de visita | NR-33 | NR-10, NR-33 |
 | bm25 | Instalação de linha de vida em cobertura metálica | NR-35 | NR-12, NR-35 |
+| bm25+llm | Troca de luminária em poste a 7 metros, próximo à rede de baixa tensão | NR-10, NR-35 | NR-10 |
+| bm25+llm | Entrega de luvas, capacete e botina para equipe nova | NR-06 | NR-06, NR-10 |
+| bm25+llm | Troca de motor elétrico de esteira transportadora | NR-10, NR-12 | NR-10 |
+| bm25+llm | Solda dentro de silo vazio com acesso por escotilha superior | NR-33, NR-35 | NR-33 |
+| bm25+llm | Manutenção de subestação com desligamento e bloqueio | NR-10 | NR-10, NR-12 |

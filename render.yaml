@@ -10,12 +10,16 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
-      - key: ANTHROPIC_API_KEY
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: MISTRAL_API_KEY
         sync: false
       - key: APRUMO_INTERNAL_TOKEN
         sync: false
-      - key: APRUMO_MODEL
-        value: claude-opus-5-5
 
   - type: web
     name: aprumo-bff
