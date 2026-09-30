@@ -104,3 +104,11 @@ def test_sem_chave_usa_so_bm25(tmp_path, monkeypatch):
     (tmp_path / "embeddings.json").write_text(json.dumps({"provider": "mistral"}), encoding="utf-8")
     monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
     assert isinstance(retriever_from_env(CORPUS, tmp_path), BM25Retriever)
+
+
+def test_vetor_da_consulta_repetida_vem_do_cache():
+    embedder = FakeEmbedder([1, 0, 0, 0])
+    hybrid = HybridRetriever(BM25Retriever(CORPUS), DenseIndex(CORPUS, VECTORS), embedder)
+    hybrid.search("troca de lâmpada no poste", k=2)
+    hybrid.search("troca de lâmpada no poste", k=2, norms={"NR-35"})
+    assert embedder.calls == 1

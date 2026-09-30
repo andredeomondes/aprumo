@@ -3,7 +3,7 @@ significado ("poste" → trabalho em altura). As duas listas se fundem por Recip
 Fusion, que usa só a posição e dispensa calibrar escalas de score diferentes."""
 
 import logging
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 
 import numpy as np
 
@@ -46,12 +46,24 @@ class HybridRetriever:
         self._dense = dense
         self._embedder = embedder
         self._depth = depth
+        # A mesma consulta é buscada uma vez por norma escolhida; o vetor só precisa ser pedido uma vez.
+        self._vectors: OrderedDict[str, np.ndarray] = OrderedDict()
+
+    def _embed(self, query: str) -> np.ndarray:
+        if query in self._vectors:
+            self._vectors.move_to_end(query)
+            return self._vectors[query]
+        vector = self._embedder.embed([query])[0]
+        self._vectors[query] = vector
+        if len(self._vectors) > 512:
+            self._vectors.popitem(last=False)
+        return vector
 
     def search(self, query: str, k: int, norms: set[str] | None = None) -> list[ScoredRequirement]:
         depth = max(k, self._depth)
         lexical = self._lexical.search(query, k=depth, norms=norms)
         try:
-            vector = self._embedder.embed([query])[0]
+            vector = self._embed(query)
         except EmbeddingError as exc:
             log.warning("busca densa indisponível, só BM25: %s", exc)
             METRICS.inc("retrieval", mode="lexical_fallback")
