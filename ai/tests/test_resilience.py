@@ -87,3 +87,8 @@ def test_cache_descarta_o_mais_antigo():
     for text in ["a", "b", "c", "a"]:
         cached.expand_query(text)
     assert inner.calls == 4
+
+
+def test_regras_tambem_escolhem_normas():
+    expansion = RuleBasedReasoner().expand_query("Operação de empilhadeira e troca de luminária em poste")
+    assert {"NR-11", "NR-35"} <= set(expansion.norms)

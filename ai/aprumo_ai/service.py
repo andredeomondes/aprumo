@@ -1,12 +1,12 @@
 from datetime import datetime, timezone
 
-from aprumo_ai.domain import QA, Analysis, Finding, Report, Requirement
+from aprumo_ai.domain import NORM_TITLES, QA, Analysis, Finding, NormHit, Report, Requirement
 from aprumo_ai.privacy import redact
 from aprumo_ai.reasoner import Reasoner
-from aprumo_ai.retrieval import Retriever, norms_of, rank_norms, select_requirements
+from aprumo_ai.retrieval import Retriever, ScoredRequirement, norms_of, rank_norms, select_requirements
 
 NO_BASIS = (
-    "Não encontrei base nas normas do corpus (NR-01, 06, 10, 12, 33 e 35) para essa descrição. "
+    "Não encontrei base nas normas do corpus para essa descrição. "
     "Descreva a atividade de trabalho: o que será feito, onde e com quais equipamentos."
 )
 NOT_COVERED = "As respostas não trouxeram informação sobre este item."
@@ -23,12 +23,29 @@ class AssessmentService:
         corpus_date: str,
         k: int = 12,
         min_score: float = 1.0,
+        per_norm: int = 4,
     ) -> None:
         self._retriever = retriever
         self._reasoner = reasoner
         self._corpus_date = corpus_date
         self._k = k
         self._min_score = min_score
+        self._per_norm = per_norm
+
+    def _retrieve(self, query: str, chosen: list[str]) -> tuple[list[ScoredRequirement], list[NormHit]]:
+        """Com normas escolhidas pelo modelo, busca dentro de cada uma: a norma extensa não afoga a
+        menor. Sem escolha (ou sem acerto nela), cai na identificação pela participação no score."""
+        hits = [h for code in chosen for h in self._retriever.search(query, k=self._per_norm, norms={code})]
+        if hits:
+            total = sum(h.score for h in hits) or 1.0
+            by_norm = {code: sum(h.score for h in hits if h.requirement.norm == code) for code in chosen}
+            norms = [
+                NormHit(norm=code, title=NORM_TITLES[code], share=round(score / total, 3))
+                for code, score in by_norm.items() if score > 0
+            ]
+            return hits, norms
+        hits = self._retriever.search(query, k=self._k)
+        return hits, rank_norms(hits)
 
     def analyze(self, activity: str) -> Analysis:
         clean = redact(activity)
@@ -36,12 +53,12 @@ class AssessmentService:
         if not expansion.is_work_activity:
             return Analysis(status="sem_base", message=NO_BASIS)
 
-        hits = self._retriever.search(f"{clean} {expansion.terms}", k=self._k)
-        if not hits or hits[0].score < self._min_score:
+        query = f"{clean} {expansion.terms}"
+        chosen = [code for code in dict.fromkeys(expansion.norms) if code in NORM_TITLES]
+        hits, norms = self._retrieve(query, chosen)
+        if not hits or max(h.score for h in hits) < self._min_score:
             return Analysis(status="sem_base", message=NO_BASIS)
-
-        norms = rank_norms(hits)
-        requirements = select_requirements(hits, norms)
+        requirements = select_requirements(hits, norms, per_norm=self._per_norm)
         valid = {r.ref for r in requirements}
         questions = [
             q for q in self._reasoner.write_questions(clean, requirements)

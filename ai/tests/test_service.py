@@ -76,3 +76,25 @@ def test_relatorio_descarta_inventado_e_completa_faltante():
     assert report.corpus_date == "2026-09-30"
     assert [n.norm for n in report.norms] == ["NR-35"]
     assert all("carlos@x.com" not in s for s in fake.seen)
+
+
+class NormPickingReasoner(FakeReasoner):
+    def __init__(self, norms):
+        super().__init__()
+        self.norms = norms
+
+    def expand_query(self, activity):
+        self.seen.append(activity)
+        return QueryExpansion(is_work_activity=True, terms="trabalho em altura proteção", norms=self.norms)
+
+
+def test_normas_escolhidas_pelo_modelo_limitam_a_busca():
+    result = service(NormPickingReasoner(["NR-35", "NR-10"])).analyze("Troca de lâmpada em poste perto da rede")
+    assert {n.norm for n in result.norms} == {"NR-35", "NR-10"}
+    assert {r.norm for r in result.requirements} <= {"NR-35", "NR-10"}
+    assert any(r.norm == "NR-10" for r in result.requirements), "norma menor não pode ser afogada"
+
+
+def test_norma_fora_do_catalogo_e_ignorada():
+    result = service(NormPickingReasoner(["NR-99", "NR-35"])).analyze("Troca de lâmpada em poste a 6 metros")
+    assert {n.norm for n in result.norms} == {"NR-35"}

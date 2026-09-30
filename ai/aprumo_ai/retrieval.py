@@ -17,7 +17,7 @@ class ScoredRequirement(BaseModel):
 
 
 class Retriever(Protocol):
-    def search(self, query: str, k: int) -> list[ScoredRequirement]: ...
+    def search(self, query: str, k: int, norms: set[str] | None = None) -> list[ScoredRequirement]: ...
 
 
 class BM25Retriever:
@@ -30,12 +30,15 @@ class BM25Retriever:
     def __init__(self, requirements: list[Requirement]) -> None:
         self._requirements = [r for r in requirements if not r.revoked]
         self._index = BM25Okapi([tokenize(f"{r.item} {r.text}") for r in self._requirements])
+        self._norm_of = np.array([r.norm for r in self._requirements])
 
-    def search(self, query: str, k: int) -> list[ScoredRequirement]:
+    def search(self, query: str, k: int, norms: set[str] | None = None) -> list[ScoredRequirement]:
         tokens = tokenize(query)
         if not tokens:
             return []
         scores = self._index.get_scores(tokens)
+        if norms is not None:
+            scores = np.where(np.isin(self._norm_of, list(norms)), scores, 0.0)
         top = np.argsort(scores)[::-1][:k]
         return [
             ScoredRequirement(requirement=self._requirements[i], score=float(scores[i]))

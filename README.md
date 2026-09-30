@@ -72,13 +72,24 @@ O raciocínio passa por uma cadeia de provedores gratuitos, todos pela API compa
 
 ## Dados
 
-Seis normas escolhidas pela intersecção que produzem entre si: NR-01, NR-06, NR-10, NR-12, NR-33 e NR-35, baixadas do portal oficial do MTE. A ingestão (`python -m aprumo_ai.ingestion`) segmenta por item numerado e grava `ai/data/corpus.json` com a data de captura e o hash SHA-256 de cada PDF.
+Catorze normas com maior incidência em ambiente industrial, baixadas do portal oficial do MTE:
 
-Resultado: **607 itens**, dos quais 13 revogados ficam fora da busca.
+| NR | Tema | NR | Tema |
+|---|---|---|---|
+| 01 | Gerenciamento de riscos ocupacionais | 17 | Ergonomia |
+| 06 | Equipamento de proteção individual | 18 | Indústria da construção |
+| 09 | Exposições a agentes físicos, químicos e biológicos | 20 | Inflamáveis e combustíveis |
+| 10 | Instalações e serviços em eletricidade | 23 | Proteção contra incêndios |
+| 11 | Transporte e movimentação de materiais | 26 | Sinalização de segurança |
+| 12 | Máquinas e equipamentos | 33 | Espaços confinados |
+| 13 | Caldeiras, vasos de pressão e tubulações | 35 | Trabalho em altura |
+ A ingestão (`python -m aprumo_ai.ingestion`) segmenta por item numerado e grava `ai/data/corpus.json` com a data de captura e o hash SHA-256 de cada PDF.
+
+Resultado: **1.822 itens**, dos quais 31 revogados ficam fora da busca. A NR-18 sozinha tem 747.
 
 ## Avaliação
 
-15 atividades com gabarito de normas escrito à mão (`ai/aprumo_ai/evaluation/cases.json`). A NR-01, transversal, fica fora da conta.
+23 atividades industriais com gabarito de normas escrito à mão (`ai/aprumo_ai/evaluation/cases.json`). A NR-01, transversal, fica fora da conta.
 
 ```
 python -m aprumo_ai.evaluation
@@ -86,20 +97,25 @@ python -m aprumo_ai.evaluation
 
 | Modo | Precisão | Revocação | F1 |
 |---|---:|---:|---:|
-| BM25 puro | 0,38 | 0,44 | 0,41 |
-| BM25 + expansão pelo modelo | 0,88 | 0,83 | **0,86** |
+| BM25 puro | 0,38 | 0,48 | 0,43 |
+| BM25 + modelo escolhe as normas | 0,67 | **0,96** | 0,79 |
+| BM25 + regras locais (reserva) | 0,96 | 0,93 | 0,94\* |
 
-A expansão da consulta dobra o F1. Os erros restantes são todos do mesmo tipo: em atividades que acionam duas normas, a segunda às vezes fica abaixo do corte de participação (25%). Testei cortes de 15% e 20% e uma busca termo a termo; todos pioraram a precisão mais do que melhoraram a revocação. Como a saída do modelo varia entre execuções, o F1 oscila entre 0,86 e 0,89.
+\* As regras locais foram escritas conhecendo os casos de teste; o número mede que a reserva funciona, não que ela generaliza.
+
+**Como chegamos aqui.** Com 6 normas, o BM25 identificava a norma pela participação na soma dos scores, e a expansão da consulta levava o F1 de 0,41 a 0,86. Ao ampliar para 14 normas, esse método caiu para 0,68: a NR-18 (construção) fala de altura, eletricidade, EPI e solda, e aparecia em quase toda consulta. A solução foi dividir o trabalho: **o modelo escolhe as normas num catálogo fechado** (não consegue inventar uma NR fora dele) e **o BM25 busca os itens dentro de cada norma escolhida**, então a norma extensa não afoga a menor.
+
+**Por que otimizar revocação.** O modelo acerta a norma principal em 22 de 23 casos e às vezes acrescenta uma segunda plausível (andaime de fachada → NR-18; linha de gás → NR-13). Em segurança do trabalho, esquecer uma norma custa mais do que conferir uma a mais, então a precisão menor é uma troca aceita.
 
 O BM25 puro erra porque as normas extensas (NR-12, NR-10) aparecem em quase toda consulta. Outra medição importante: frases fora do domínio ("receita de bolo") recebem score semelhante ao de casos reais, então **o limiar de score não serve como filtro de domínio**. Quem faz esse filtro é o modelo (`is_work_activity`), e o score fica só como piso. O resultado completo, com os casos que erraram, fica em `ai/EVALUATION.md`.
 
 ## Limitações
 
-- Seis NRs de 36 vigentes. Ampliar é questão de ingestão, não de arquitetura.
+- 14 NRs de 36 vigentes, escolhidas para ambiente industrial. Ampliar é questão de ingestão (baixar o PDF e rodar um comando), não de arquitetura.
 - Anexos da NR-12 cobertos parcialmente; tabelas perdem a estrutura na extração do PDF.
 - A extração às vezes separa palavras no meio ("fab ricação"), o que prejudica a busca nesses itens.
 - O texto da NR-10 capturado é o da Portaria MTE nº 737/2026, com vigência a partir de 01/06/2027.
-- Gabarito com 15 casos, escritos pelo autor: mede a tendência, não garante generalização.
+- Gabarito com 23 casos escritos pelo autor e rígido (uma norma plausível a mais conta como erro): mede a tendência, não garante generalização.
 - O relatório é apoio à conferência. A responsabilidade técnica continua do profissional habilitado.
 
 ## Como rodar localmente

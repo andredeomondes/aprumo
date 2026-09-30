@@ -57,3 +57,8 @@ def test_norms_of_lista_normas_distintas_com_titulo():
     norms = norms_of(CORPUS[:3])
     assert [n.norm for n in norms] == ["NR-10", "NR-35"]
     assert norms[1].title == "Trabalho em Altura"
+
+
+def test_busca_restrita_as_normas_pedidas():
+    hits = BM25Retriever(CORPUS).search("proteção trabalho altura instalações", k=5, norms={"NR-10"})
+    assert hits and {h.requirement.norm for h in hits} == {"NR-10"}

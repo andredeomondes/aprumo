@@ -14,21 +14,37 @@ log = logging.getLogger("aprumo.resilience")
 
 R = TypeVar("R")
 
-# Vocabulário de campo → vocabulário das normas. Cobre o corpus atual (NR-06, 10, 12, 33, 35).
-_FIELD_TERMS: dict[str, str] = {
-    "altura": "trabalho em altura", "poste": "trabalho em altura", "telhado": "trabalho em altura",
-    "andaime": "trabalho em altura", "escada": "trabalho em altura", "fachada": "trabalho em altura",
-    "cobertura": "trabalho em altura", "calha": "trabalho em altura", "linha de vida": "sistema de proteção contra quedas",
-    "eletric": "instalações elétricas", "energiz": "instalações elétricas", "tensao": "instalações elétricas",
-    "subestacao": "instalações elétricas", "quadro": "instalações elétricas", "rede": "instalações elétricas",
-    "tanque": "espaço confinado", "silo": "espaço confinado", "galeria": "espaço confinado",
-    "poco": "espaço confinado", "vaso": "espaço confinado", "caldeira": "espaço confinado",
-    "prensa": "máquinas e equipamentos proteção", "torno": "máquinas e equipamentos proteção",
-    "maquina": "máquinas e equipamentos proteção", "esteira": "máquinas e equipamentos proteção",
-    "injetora": "máquinas e equipamentos proteção", "motor": "máquinas e equipamentos",
-    "luva": "equipamento de proteção individual", "capacete": "equipamento de proteção individual",
-    "botina": "equipamento de proteção individual", "epi": "equipamento de proteção individual",
-    "bloqueio": "desenergização bloqueio", "solda": "permissão de trabalho",
+# Vocabulário de campo → (vocabulário das normas, norma). Cobre o corpus atual.
+_ALTURA = ("trabalho em altura", "NR-35")
+_ELETRICA = ("instalações elétricas", "NR-10")
+_CONFINADO = ("espaço confinado", "NR-33")
+_MAQUINA = ("máquinas e equipamentos proteção", "NR-12")
+_EPI = ("equipamento de proteção individual", "NR-06")
+_MOVIMENTACAO = ("transporte movimentação de materiais", "NR-11")
+_PRESSAO = ("caldeiras vasos de pressão", "NR-13")
+_INFLAMAVEL = ("inflamáveis e combustíveis", "NR-20")
+_CONSTRUCAO = ("indústria da construção", "NR-18")
+_ERGONOMIA = ("ergonomia levantamento de cargas", "NR-17")
+_EXPOSICAO = ("exposições ocupacionais agentes físicos químicos", "NR-09")
+_INCENDIO = ("proteção contra incêndios", "NR-23")
+
+_FIELD_TERMS: dict[str, tuple[str, str]] = {
+    "altura": _ALTURA, "poste": _ALTURA, "telhado": _ALTURA, "andaime": _ALTURA, "escada": _ALTURA,
+    "fachada": _ALTURA, "cobertura": _ALTURA, "calha": _ALTURA, "linha de vida": _ALTURA,
+    "eletric": _ELETRICA, "energiz": _ELETRICA, "tensao": _ELETRICA, "subestacao": _ELETRICA,
+    "quadro de": _ELETRICA, "rede eletrica": _ELETRICA, "luminaria": _ELETRICA,
+    "tanque": _CONFINADO, "silo": _CONFINADO, "galeria": _CONFINADO, "poco": _CONFINADO, "escotilha": _CONFINADO,
+    "prensa": _MAQUINA, "torno": _MAQUINA, "maquina": _MAQUINA, "esteira": _MAQUINA, "injetora": _MAQUINA,
+    "serra": _MAQUINA, "motor": _MAQUINA,
+    "luva": _EPI, "capacete": _EPI, "botina": _EPI, "epi": _EPI, "oculos": _EPI,
+    "empilhadeira": _MOVIMENTACAO, "ponte rolante": _MOVIMENTACAO, "talha": _MOVIMENTACAO,
+    "guindaste": _MOVIMENTACAO, "palete": _MOVIMENTACAO, "icamento": _MOVIMENTACAO,
+    "caldeira": _PRESSAO, "vaso de pressao": _PRESSAO, "autoclave": _PRESSAO, "hidrostatic": _PRESSAO,
+    "combustivel": _INFLAMAVEL, "inflamavel": _INFLAMAVEL, "gas": _INFLAMAVEL, "solvente": _INFLAMAVEL,
+    "obra": _CONSTRUCAO, "concret": _CONSTRUCAO, "forma": _CONSTRUCAO, "demolicao": _CONSTRUCAO, "escavacao": _CONSTRUCAO,
+    "levantamento manual": _ERGONOMIA, "postura": _ERGONOMIA, "ergonom": _ERGONOMIA,
+    "ruido": _EXPOSICAO, "calor": _EXPOSICAO, "vibracao": _EXPOSICAO, "poeira": _EXPOSICAO, "quimico": _EXPOSICAO,
+    "incendio": _INCENDIO, "extintor": _INCENDIO,
 }
 _WORK_VERBS = ("manutenc", "instalac", "troca", "limpeza", "montagem", "inspec", "reparo", "operac", "servico", "trabalho")
 
@@ -38,9 +54,11 @@ class RuleBasedReasoner:
 
     def expand_query(self, activity: str) -> QueryExpansion:
         text = strip_accents(activity.lower())
-        terms = sorted({norm_terms for field, norm_terms in _FIELD_TERMS.items() if field in text})
-        is_work = bool(terms) or any(verb in text for verb in _WORK_VERBS)
-        return QueryExpansion(is_work_activity=is_work, terms=" ".join(terms))
+        matched = [pair for field, pair in _FIELD_TERMS.items() if field in text]
+        terms = sorted({norm_terms for norm_terms, _ in matched})
+        norms = list(dict.fromkeys(norm for _, norm in matched))[:3]
+        is_work = bool(matched) or any(verb in text for verb in _WORK_VERBS)
+        return QueryExpansion(is_work_activity=is_work, terms=" ".join(terms), norms=norms)
 
     def write_questions(self, activity: str, requirements: list[Requirement]) -> list[Question]:
         return [

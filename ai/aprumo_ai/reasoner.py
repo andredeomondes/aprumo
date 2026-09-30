@@ -2,13 +2,14 @@ from typing import Protocol
 
 from pydantic import BaseModel
 
-from aprumo_ai.domain import QA, Finding, Question, Requirement
+from aprumo_ai.domain import NORM_TITLES, QA, Finding, Question, Requirement
 from aprumo_ai.llm import LLMError, StructuredLLM
 
 
 class QueryExpansion(BaseModel):
     is_work_activity: bool
     terms: str
+    norms: list[str] = []
 
 
 class ReasonerError(Exception):
@@ -32,10 +33,13 @@ SYSTEM = (
 )
 
 # Limites por etapa: o suficiente para a resposta, sem pagar por texto que não será usado.
-_EXPANSION_TOKENS = 250
+_EXPANSION_TOKENS = 300
 _QUESTIONS_TOKENS = 900
 _FINDINGS_TOKENS = 1600
 _ITEM_CHARS = 400
+
+# Catálogo fechado: o modelo escolhe normas desta lista e não pode inventar outra.
+_CATALOG = "\n".join(f"{code}: {title}" for code, title in NORM_TITLES.items() if code != "NR-01")
 
 
 class _Questions(BaseModel):
@@ -74,7 +78,12 @@ class LLMReasoner:
             "(ex.: trabalho em altura, espaço confinado, instalações elétricas, proteção de máquinas, "
             "equipamento de proteção individual, análise de risco, permissão de trabalho, bloqueio, "
             "sistema de proteção contra quedas). Só termos, separados por espaço; sem números de NR. "
-            "Vazio se is_work_activity for false.",
+            "Vazio se is_work_activity for false.\n"
+            "norms: códigos das normas deste catálogo que tratam do risco específico da atividade, da "
+            "mais para a menos relevante. Normalmente uma; duas só quando a atividade combina dois riscos "
+            "distintos (ex.: eletricidade em altura). Não liste a NR-06 (EPI), que vale para quase tudo, "
+            "a menos que a atividade seja sobre o próprio EPI. Lista vazia se is_work_activity for false:\n"
+            f"{_CATALOG}",
             _EXPANSION_TOKENS,
         )
 

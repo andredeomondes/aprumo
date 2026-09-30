@@ -5,8 +5,16 @@ from pydantic import BaseModel, Field, computed_field
 NORM_TITLES: dict[str, str] = {
     "NR-01": "Disposições Gerais e Gerenciamento de Riscos Ocupacionais",
     "NR-06": "Equipamento de Proteção Individual",
+    "NR-09": "Avaliação e Controle das Exposições Ocupacionais a Agentes Físicos, Químicos e Biológicos",
     "NR-10": "Segurança em Instalações e Serviços em Eletricidade",
+    "NR-11": "Transporte, Movimentação, Armazenagem e Manuseio de Materiais",
     "NR-12": "Segurança no Trabalho em Máquinas e Equipamentos",
+    "NR-13": "Caldeiras, Vasos de Pressão, Tubulações e Tanques Metálicos de Armazenamento",
+    "NR-17": "Ergonomia",
+    "NR-18": "Segurança e Saúde no Trabalho na Indústria da Construção",
+    "NR-20": "Segurança e Saúde no Trabalho com Inflamáveis e Combustíveis",
+    "NR-23": "Proteção Contra Incêndios",
+    "NR-26": "Sinalização e Identificação de Segurança",
     "NR-33": "Segurança e Saúde nos Trabalhos em Espaços Confinados",
     "NR-35": "Trabalho em Altura",
 }
