@@ -59,6 +59,15 @@ def sector_series(data: dict, prefixes: list[str]) -> tuple[list[str], list[int]
     return months, values, deaths
 
 
+def series_is_reliable(values: list[int], low: float = 0.4, high: float = 2.0) -> bool:
+    """Recusa série com mês quase vazio ou com acúmulo: sinal de falha de publicação, não de
+    mudança real. As CATs abertas do INSS de 2023 a 2026 reprovam aqui (meses com 5 CATs ao
+    lado de meses com 100 mil), e por isso o Aprumo não mostra série nenhuma com elas."""
+    ordered = sorted(values)
+    median = ordered[len(ordered) // 2]
+    return median > 0 and all(low * median <= v <= high * median for v in values)
+
+
 def _holt(series: list[float], alpha: float, beta: float) -> tuple[float, float, float]:
     """Devolve nível, tendência e soma dos erros quadráticos de um passo à frente."""
     level, trend = series[0], series[1] - series[0]
@@ -104,7 +113,7 @@ class TrendService:
                 continue
             sector, prefixes = NORM_SECTORS[norm]
             months, values, deaths = sector_series(self._data, prefixes)
-            if len(values) < MIN_MONTHS or sum(values[-12:]) == 0:
+            if len(values) < MIN_MONTHS or sum(values[-12:]) == 0 or not series_is_reliable(values):
                 continue
             last, previous = sum(values[-12:]), sum(values[-24:-12])
             series = [float(v) for v in values]

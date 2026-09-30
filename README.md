@@ -14,7 +14,7 @@ Uma mesma atividade pode acionar várias normas ao mesmo tempo. Trocar uma lumin
 |---|---|
 | Identifica as NRs aplicáveis a uma descrição em linguagem de campo | Não emite laudo nem parecer técnico |
 | Pergunta sobre os requisitos recuperados, citando o item | Não decide enquadramento que depende de juízo profissional: marca como "decisão do profissional" |
-| Mostra acidentes típicos do setor nos últimos 12 meses (CAT/INSS) | Não afirma sem fonte: sem base recuperada, diz que não encontrou |
+| Recusa dado de baixa qualidade: a série de acidentes só aparece se passar no filtro | Não afirma sem fonte: sem base recuperada, diz que não encontrou |
 | Gera relatório em PDF com status por item | Não inventa item: referência fora do que foi recuperado é descartada |
 | Mascara CPF, e-mail, telefone, CNPJ e matrícula antes de chamar o modelo | Não substitui a leitura da norma |
 
@@ -26,7 +26,7 @@ Uma mesma atividade pode acionar várias normas ao mesmo tempo. Trocar uma lumin
 | LLMs e transformers | Expansão de consulta, escolha de normas num catálogo fechado, perguntas e avaliação com saída estruturada; embeddings `mistral-embed` | `reasoner.py`, `llm.py`, `hybrid.py` |
 | RAG | Item numerado como unidade de recuperação, busca híbrida BM25 + vetores com Reciprocal Rank Fusion, citação obrigatória | `hybrid.py`, `service.py` |
 | ML: avaliação | Gabarito de 33 atividades, precisão, revocação, F1 e acerto da norma principal, com piso de qualidade no CI | `evaluation/`, `EVALUATION.md` |
-| Séries temporais | Série mensal de acidentes por setor (CAT/INSS), Holt com backtest contra o ingênuo | `accidents/trends.py` |
+| Séries temporais | Série mensal de acidentes por setor (CAT/INSS), filtro de qualidade, Holt com backtest contra o ingênuo | `accidents/trends.py` |
 | Engenharia de dados | Download do texto consolidado de cada NR, extração com PyMuPDF, relatório de qualidade da ingestão, hash dos PDFs, agregação de 38 meses de CAT | `ingestion/`, `accidents/ingest.py`, `data/INGESTION.md` |
 | MLOps e observabilidade | CI com testes, build e avaliação; métricas de provedores, reserva, cache e latência p50/p95; painel ao vivo | `.github/workflows/ci.yml`, `observability.py`, `#painel` |
 | Vieses, privacidade, impacto social | Anonimização antes do modelo, recusa sem base, decisão devolvida ao profissional, auditoria de fontes (ver Dados) | `privacy.py`, `service.py` |
@@ -88,7 +88,7 @@ Resultado: **5.262 itens**, 14 revogados fora da busca. O relatório de qualidad
 
 ### Acidentes de trabalho
 
-Comunicações de Acidente de Trabalho (CAT) do INSS, dados abertos sob licença CC-BY, 38 arquivos mensais. `python -m aprumo_ai.accidents.ingest` lê só o CSV de cada ZIP e conta acidentes típicos, de trajeto, doenças e óbitos por **mês do acidente** × CNAE.
+Comunicações de Acidente de Trabalho (CAT) do INSS, dados abertos sob licença CC-BY, 35 de 38 arquivos mensais (os três últimos foram bloqueados pelo portal com HTTP 403 durante a coleta). `python -m aprumo_ai.accidents.ingest` lê só o CSV de cada ZIP e conta acidentes típicos, de trajeto, doenças e óbitos por **mês do acidente** × CNAE.
 
 A série é montada pela data do acidente, e não pelo mês do arquivo, porque os arquivos oscilam por motivos de publicação (abr/2024 com o dobro do normal, set/2024 a fev/2025 quase vazios, jun/2026 com acúmulo). Os três meses mais recentes são descartados por atraso de notificação.
 
@@ -103,8 +103,11 @@ python -m aprumo_ai.evaluation
 | Modo | Norma principal certa | Precisão | Revocação | F1 |
 |---|---:|---:|---:|---:|
 | BM25 puro | 16/33 | 0,47 | 0,45 | 0,46 |
+| Híbrida (BM25 + embeddings), sem modelo | 18/33 | 0,55 | 0,55 | 0,55 |
 | BM25 + regras locais (reserva) | 31/33 | 0,89 | 0,87 | 0,88\* |
-| BM25 + modelo escolhe as normas | **32/33** | 0,64 | **0,97** | 0,77 |
+| **Híbrida + modelo escolhe as normas (produção)** | **32/33** | 0,61 | **0,95** | 0,74 |
+
+Os embeddings sozinhos acrescentam pouco na identificação da norma (+0,09 de F1 sobre o BM25), porque quem decide a norma é o modelo; o ganho deles está em recuperar o item certo quando a descrição usa outras palavras. Entre execuções, a saída do modelo varia e o F1 de produção oscila entre 0,74 e 0,79.
 
 \* As regras locais foram escritas conhecendo os casos de teste; o número mede que a reserva funciona, não que ela generaliza.
 
@@ -116,7 +119,18 @@ python -m aprumo_ai.evaluation
 
 ## Séries temporais
 
-Para normas setoriais (NR-18 construção, NR-22 mineração, NR-31 agro, NR-32 saúde, NR-36 frigoríficos e outras), a análise traz os acidentes típicos dos últimos 12 meses no setor, a variação sobre os 12 anteriores, os óbitos e uma projeção de 3 meses por Holt (suavização exponencial com tendência). Holt em vez de um modelo sazonal porque são pouco mais de três ciclos anuais, e a sazonalidade estimada com tão pouco dado mais atrapalha do que ajuda. **A projeção só é exibida quando vence o modelo ingênuo** ("o próximo mês repete o último") num backtest de um passo à frente sobre os últimos seis meses.
+O pipeline está completo: série mensal de acidentes típicos por setor a partir das CATs do INSS, mapeamento de cada norma setorial para os CNAEs do seu setor (NR-18 construção, NR-22 mineração, NR-31 agro, NR-32 saúde, NR-36 frigoríficos e outras), projeção de 3 meses por Holt e backtest contra o modelo ingênuo, com a projeção exibida só quando vence.
+
+**Mas nenhuma série é exibida hoje, e isso é deliberado.** A série só aparece se passar num filtro de qualidade: nenhum mês pode ficar abaixo de 40% ou acima de 200% da mediana. As CATs abertas de jun/2023 a abr/2026 reprovam em todos os setores, mesmo contando pela data do acidente:
+
+| Período | Acidentes típicos por mês (Brasil) |
+|---|---:|
+| jun/2023 a abr/2024 | 27 a 50 mil |
+| set/2024 a fev/2025 | 2,8 a 8,4 mil |
+| jul e ago/2025 | 100 e 95 mil |
+| nov e dez/2025 | 40 e 5 |
+
+Acidentes de trabalho não oscilam assim. As variações vêm da publicação dos dados, e uma tendência calculada sobre elas seria falsa. Para uma ferramenta de segurança, mostrar número errado é pior do que não mostrar nada. O código fica pronto para quando a fonte for corrigida ou trocada; a alternativa natural são as tabelas anuais consolidadas do Anuário Estatístico de Acidentes do Trabalho.
 
 ## Observabilidade
 
@@ -147,7 +161,7 @@ Para normas setoriais (NR-18 construção, NR-22 mineração, NR-31 agro, NR-32 
 - Nomes de pessoas não são anonimizados (só padrões estruturados: CPF, CNPJ, e-mail, telefone, matrícula).
 - Tabelas dos PDFs perdem a estrutura na extração; itens que dependem de tabela ficam incompletos. Anexos avulsos (como os de limites de tolerância da NR-15) não entram.
 - O gabarito tem 33 casos escritos pelo autor e é rígido: uma norma plausível a mais conta como erro.
-- A série de acidentes reflete notificações: subnotificação e mudanças de CNAE afetam os números.
+- A série de acidentes está desligada pelo filtro de qualidade enquanto a fonte tiver falhas de publicação (ver Séries temporais).
 - Os planos gratuitos têm cota: o orçamento diário e a cadeia de provedores reduzem, mas não eliminam, o risco de indisponibilidade.
 - O relatório é apoio à conferência. A responsabilidade técnica continua do profissional habilitado.
 

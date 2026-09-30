@@ -55,3 +55,18 @@ def test_usa_so_a_janela_completa_da_serie():
     windowed = {**DATA, "complete_from": "202503", "complete_until": "202610"}
     months, values, _ = sector_series(windowed, ["41"])
     assert months[0] == "202503" and months[-1] == "202610"
+
+
+def test_serie_com_buracos_de_publicacao_e_recusada():
+    from aprumo_ai.accidents.trends import series_is_reliable
+
+    steady = [100, 110, 95, 105, 98, 102] * 4
+    assert series_is_reliable(steady)
+    assert not series_is_reliable(steady[:10] + [5] + steady[11:]), "mês quase vazio"
+    assert not series_is_reliable(steady[:10] + [400] + steady[11:]), "mês com acúmulo"
+
+
+def test_setor_com_serie_ruim_nao_aparece():
+    broken = {"months": {k: v for k, v in DATA["months"].items()}}
+    broken["months"]["202506"] = {"4120": {"tipico": 3, "trajeto": 0, "doenca": 0, "obitos": 0}}
+    assert TrendService(broken).for_norms(["NR-18"]) == []

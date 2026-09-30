@@ -1,0 +1,7 @@
+{
+ "provider": "mistral",
+ "model": "mistral-embed",
+ "dimensions": 1024,
+ "count": 5262,
+ "corpus_sha256": "ce941f5a4945c804ce06178ed5df584df5c1f3710136ced1ca6ddf2dbe2636f3"
+}
