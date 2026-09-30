@@ -39,3 +39,15 @@ def test_item_de_anexo_tem_ref_propria():
 def test_norma_de_um_digito_usa_zero_a_esquerda():
     reqs = parse_norm(6, ["6.1 Para os fins desta Norma, considera-se EPI todo dispositivo."])
     assert reqs[0].ref == "NR-06 item 6.1"
+
+
+def test_sumario_com_anexos_antes_do_texto_nao_rotula_itens_principais():
+    lines = [
+        "SUMÁRIO",
+        "ANEXO I - Andaimes",
+        "ANEXO II - Plataformas",
+        "18.1 Objetivo",
+        "18.1.1 Esta Norma estabelece diretrizes.",
+    ]
+    reqs = parse_norm(18, lines)
+    assert [r.ref for r in reqs] == ["NR-18 item 18.1", "NR-18 item 18.1.1"]

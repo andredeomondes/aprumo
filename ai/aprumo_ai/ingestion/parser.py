@@ -23,14 +23,20 @@ def parse_norm(norm_number: int, lines: Iterable[str]) -> list[Requirement]:
     current: dict | None = None
     annex: str | None = None
 
+    seen_items: set[str] = set()
+
     def flush() -> None:
         if current is None:
             return
         text = _SPACES.sub(" ", " ".join(current["parts"])).strip()
+        # Sumários listam "ANEXO I…" antes do texto principal. O rótulo de anexo só vale quando
+        # o número colide com um item já visto; senão a citação sairia errada.
+        annex = current["annex"] if current["item"] in seen_items else None
+        seen_items.add(current["item"])
         requirement = Requirement(
             norm=norm,
             item=current["item"],
-            annex=current["annex"],
+            annex=annex,
             text=text,
             revoked=bool(_REVOKED.search(text)),
         )
