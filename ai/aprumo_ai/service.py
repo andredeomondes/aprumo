@@ -1,8 +1,11 @@
 from datetime import datetime, timezone
+from typing import Protocol
 
+from aprumo_ai.observability import METRICS
 from aprumo_ai.domain import NORM_TITLES, QA, Analysis, Finding, NormHit, Report, Requirement
 from aprumo_ai.privacy import redact
 from aprumo_ai.reasoner import Reasoner
+from aprumo_ai.accidents.trends import SectorTrend
 from aprumo_ai.retrieval import Retriever, ScoredRequirement, norms_of, rank_norms, select_requirements
 
 NO_BASIS = (
@@ -12,6 +15,10 @@ NO_BASIS = (
 # O prompt pede no máximo duas, mas prompt não é garantia: o limite vale no código.
 MAX_NORMS = 3
 NOT_COVERED = "As respostas não trouxeram informação sobre este item."
+
+
+class TrendProvider(Protocol):
+    def for_norms(self, norms: list[str]) -> list[SectorTrend]: ...
 
 
 class AssessmentService:
@@ -26,6 +33,7 @@ class AssessmentService:
         k: int = 12,
         min_score: float = 1.0,
         per_norm: int = 4,
+        trends: TrendProvider | None = None,
     ) -> None:
         self._retriever = retriever
         self._reasoner = reasoner
@@ -33,6 +41,7 @@ class AssessmentService:
         self._k = k
         self._min_score = min_score
         self._per_norm = per_norm
+        self._trends = trends
 
     def _retrieve(self, query: str, chosen: list[str]) -> tuple[list[ScoredRequirement], list[NormHit]]:
         """Com normas escolhidas pelo modelo, busca dentro de cada uma: a norma extensa não afoga a
@@ -53,12 +62,14 @@ class AssessmentService:
         clean = redact(activity)
         expansion = self._reasoner.expand_query(clean)
         if not expansion.is_work_activity:
+            METRICS.inc("analysis", status="fora_do_dominio")
             return Analysis(status="sem_base", message=NO_BASIS)
 
         query = f"{clean} {expansion.terms}"
         chosen = [code for code in dict.fromkeys(expansion.norms) if code in NORM_TITLES][:MAX_NORMS]
         hits, norms = self._retrieve(query, chosen)
         if not hits or max(h.score for h in hits) < self._min_score:
+            METRICS.inc("analysis", status="sem_base")
             return Analysis(status="sem_base", message=NO_BASIS)
         requirements = select_requirements(hits, norms, per_norm=self._per_norm)
         valid = {r.ref for r in requirements}
@@ -66,6 +77,9 @@ class AssessmentService:
             q for q in self._reasoner.write_questions(clean, requirements)
             if q.refs and set(q.refs) <= valid
         ]
+        METRICS.inc("analysis", status="ok")
+        for norm in norms:
+            METRICS.inc("norm_identified", norm=norm.norm)
         names = ", ".join(n.norm for n in norms)
         return Analysis(
             status="ok",
@@ -73,6 +87,7 @@ class AssessmentService:
             norms=norms,
             requirements=requirements,
             questions=questions,
+            risk_context=self._risk_context([n.norm for n in norms]),
         )
 
     def evaluate(self, activity: str, requirements: list[Requirement], answers: list[QA]) -> Report:
@@ -95,4 +110,8 @@ class AssessmentService:
             requirements=requirements,
             corpus_date=self._corpus_date,
             generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            risk_context=self._risk_context(sorted({r.norm for r in requirements})),
         )
+
+    def _risk_context(self, norms: list[str]) -> list[SectorTrend]:
+        return self._trends.for_norms(norms) if self._trends else []

@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, computed_field
 
+from aprumo_ai.accidents.trends import SectorTrend
+
 NORM_TITLES: dict[str, str] = {
     "NR-01": "Disposições Gerais e Gerenciamento de Riscos Ocupacionais",
     "NR-03": "Embargo e Interdição",
@@ -83,6 +85,7 @@ class Analysis(BaseModel):
     norms: list[NormHit] = []
     requirements: list[Requirement] = []
     questions: list[Question] = []
+    risk_context: list[SectorTrend] = []
 
 
 class QA(BaseModel):
@@ -104,3 +107,4 @@ class Report(BaseModel):
     corpus_date: str
     generated_at: str
     disclaimer: str = DISCLAIMER
+    risk_context: list[SectorTrend] = []

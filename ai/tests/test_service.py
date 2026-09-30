@@ -106,3 +106,30 @@ def test_no_maximo_tres_normas_mesmo_se_o_modelo_listar_mais():
     result = service(NormPickingReasoner(many)).analyze(activity)
     assert len(result.norms) <= 3
     assert "NR-12" not in {n.norm for n in result.norms}
+
+
+class FakeTrends:
+    def __init__(self):
+        self.asked = []
+
+    def for_norms(self, norms):
+        from aprumo_ai.accidents.trends import SectorTrend
+
+        self.asked.append(norms)
+        return [SectorTrend(norm="NR-35", sector="Teste", months=["202601"], values=[1], last_12m=10,
+                            previous_12m=8, change_pct=25.0, deaths_12m=1, forecast=[1, 1, 1],
+                            forecast_beats_naive=True)]
+
+
+def test_analise_e_relatorio_trazem_contexto_de_risco_do_setor():
+    trends = FakeTrends()
+    svc = AssessmentService(BM25Retriever(CORPUS), FakeReasoner(), corpus_date="2026-09-30", k=5,
+                            min_score=0.1, trends=trends)
+    analysis = svc.analyze("Troca de lâmpada em poste a 6 metros de altura")
+    assert analysis.risk_context[0].change_pct == 25.0
+    report = svc.evaluate("Troca de lâmpada em altura", CORPUS[:1], [])
+    assert report.risk_context and trends.asked[-1] == ["NR-35"]
+
+
+def test_sem_dados_de_acidentes_o_contexto_fica_vazio():
+    assert service(FakeReasoner()).analyze("Troca de lâmpada em poste a 6 metros de altura").risk_context == []
