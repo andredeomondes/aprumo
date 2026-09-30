@@ -1,0 +1,17 @@
+name: keepalive
+
+# O plano gratuito do Render dorme após 15 min sem acesso. Durante a semana das
+# entrevistas, um ping a cada 10 min mantém os dois serviços acordados.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acordar serviços
+        run: |
+          curl -fsS --max-time 90 "${{ secrets.AI_HEALTH_URL }}" || true
+          curl -fsS --max-time 90 "${{ secrets.BFF_HEALTH_URL }}" || true

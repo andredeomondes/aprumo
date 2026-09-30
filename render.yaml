@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: aprumo-ai
+    runtime: python
+    plan: free
+    rootDir: ai
+    buildCommand: pip install .
+    startCommand: uvicorn aprumo_ai.main:app --app-dir . --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: APRUMO_INTERNAL_TOKEN
+        sync: false
+      - key: APRUMO_MODEL
+        value: claude-opus-5-5
+
+  - type: web
+    name: aprumo-bff
+    runtime: node
+    plan: free
+    rootDir: bff
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: AI_BASE_URL
+        sync: false
+      - key: AI_INTERNAL_TOKEN
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "10"
