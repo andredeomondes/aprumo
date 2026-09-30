@@ -1,22 +1,25 @@
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
-import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
+import Fastify, { type FastifyError, type FastifyInstance, type FastifyReply } from "fastify";
 import { ZodError } from "zod";
 import { AiServiceError, type AiClient } from "./ai-client.js";
+import { DailyBudget } from "./daily-budget.js";
 import { AnalyzeBody, EvaluateBody, ReportSchema, type Report } from "./schemas.js";
 
 export interface AppDeps {
   aiClient: AiClient;
   corsOrigin: string | string[];
   rateLimitMax: number;
+  dailyBudget: number;
   renderPdf: (report: Report) => Promise<Buffer>;
 }
 
-export async function buildApp({ aiClient, corsOrigin, rateLimitMax, renderPdf }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ aiClient, corsOrigin, rateLimitMax, dailyBudget, renderPdf }: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     logger: process.env.NODE_ENV !== "test" && !process.env.VITEST,
     bodyLimit: 256 * 1024,
-    trustProxy: true,
+    // Um salto: o proxy do Render. Confiar em todos deixaria forjar o IP pelo X-Forwarded-For.
+    trustProxy: (_address: string, hop: number) => hop < 1,
   });
   await app.register(cors, { origin: corsOrigin });
   await app.register(rateLimit, { max: rateLimitMax, timeWindow: "1 minute" });
@@ -37,9 +40,22 @@ export async function buildApp({ aiClient, corsOrigin, rateLimitMax, renderPdf }
 
   app.get("/health", { config: { rateLimit: false } }, async () => ({ status: "ok" }));
 
-  app.post("/api/analyze", async (request) => aiClient.analyze(AnalyzeBody.parse(request.body).activity));
+  const budget = new DailyBudget(dailyBudget);
+  const spendBudget = async (_request: unknown, reply: FastifyReply) => {
+    if (!budget.tryConsume()) {
+      return reply.status(503).send({
+        message: "O Aprumo atingiu o limite diário de análises da versão de demonstração. Tente amanhã.",
+      });
+    }
+  };
 
-  app.post("/api/evaluate", async (request) => aiClient.evaluate(EvaluateBody.parse(request.body)));
+  app.post("/api/analyze", { preHandler: spendBudget }, async (request) =>
+    aiClient.analyze(AnalyzeBody.parse(request.body).activity),
+  );
+
+  app.post("/api/evaluate", { preHandler: spendBudget }, async (request) =>
+    aiClient.evaluate(EvaluateBody.parse(request.body)),
+  );
 
   app.post("/api/report.pdf", async (request, reply) => {
     const pdf = await renderPdf(ReportSchema.parse(request.body));

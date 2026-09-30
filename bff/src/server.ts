@@ -12,6 +12,7 @@ const app = await buildApp({
   aiClient: new HttpAiClient(env("AI_BASE_URL"), env("AI_INTERNAL_TOKEN")),
   corsOrigin: env("CORS_ORIGIN", "*").split(",").map((origin) => origin.trim()),
   rateLimitMax: Number(env("RATE_LIMIT_PER_MINUTE", "10")),
+  dailyBudget: Number(env("DAILY_ANALYSIS_BUDGET", "300")),
   renderPdf: renderReportPdf,
 });
 

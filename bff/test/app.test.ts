@@ -18,11 +18,12 @@ function fakeAi(overrides: Partial<AiClient> = {}): AiClient {
   return { analyze: async () => analysis, evaluate: async () => report, ...overrides };
 }
 
-function app(ai = fakeAi(), rateLimitMax = 100) {
+function app(ai = fakeAi(), rateLimitMax = 100, dailyBudget = 1000) {
   return buildApp({
     aiClient: ai,
     corsOrigin: "*",
     rateLimitMax,
+    dailyBudget,
     renderPdf: async () => Buffer.from("%PDF-1.7 fake"),
   });
 }
@@ -75,5 +76,35 @@ describe("bff", () => {
   it("health responde sem depender do serviço de IA", async () => {
     const res = await (await app()).inject({ method: "GET", url: "/health" });
     expect(res.json()).toEqual({ status: "ok" });
+  });
+
+  it("não deixa forjar o IP pelo X-Forwarded-For para furar o limite", async () => {
+    const instance = await app(fakeAi(), 1);
+    const send = (spoofed: string) =>
+      instance.inject({
+        method: "POST",
+        url: "/api/analyze",
+        payload: ACTIVITY,
+        headers: { "x-forwarded-for": `${spoofed}, 203.0.113.7` },
+      });
+    await send("1.1.1.1");
+    expect((await send("2.2.2.2")).statusCode).toBe(429);
+  });
+
+  it("orçamento diário protege a cota dos modelos", async () => {
+    const instance = await app(fakeAi(), 100, 2);
+    const call = () => instance.inject({ method: "POST", url: "/api/analyze", payload: ACTIVITY });
+    await call();
+    await call();
+    const res = await call();
+    expect(res.statusCode).toBe(503);
+    expect(res.json().message).toContain("limite diário");
+  });
+
+  it("gerar PDF não consome o orçamento dos modelos", async () => {
+    const instance = await app(fakeAi(), 100, 1);
+    await instance.inject({ method: "POST", url: "/api/report.pdf", payload: report });
+    const res = await instance.inject({ method: "POST", url: "/api/analyze", payload: ACTIVITY });
+    expect(res.statusCode).toBe(200);
   });
 });
