@@ -39,12 +39,12 @@ def test_rank_norms_por_participacao_e_corte():
     hits = [
         ScoredRequirement(requirement=CORPUS[0], score=6.0),
         ScoredRequirement(requirement=CORPUS[1], score=4.0),
-        ScoredRequirement(requirement=CORPUS[2], score=3.0),
+        ScoredRequirement(requirement=CORPUS[2], score=4.0),
         ScoredRequirement(requirement=CORPUS[3], score=0.5),
     ]
     norms = rank_norms(hits)
     assert [n.norm for n in norms] == ["NR-35", "NR-10"]
-    assert norms[0].share == round(10 / 13.5, 3)
+    assert norms[0].share == round(10 / 14.5, 3)
 
 
 def test_select_limita_por_norma():

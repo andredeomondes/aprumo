@@ -1,0 +1,17 @@
+[
+ {"activity": "Troca de luminária em poste a 7 metros, próximo à rede de baixa tensão", "norms": ["NR-35", "NR-10"]},
+ {"activity": "Limpeza interna de tanque de armazenamento de combustível", "norms": ["NR-33"]},
+ {"activity": "Manutenção corretiva em prensa hidráulica com troca de matriz", "norms": ["NR-12"]},
+ {"activity": "Montagem de andaime para pintura de fachada no quarto andar", "norms": ["NR-35"]},
+ {"activity": "Instalação de quadro de distribuição energizado em 380 V", "norms": ["NR-10"]},
+ {"activity": "Inspeção dentro de galeria subterrânea de esgoto", "norms": ["NR-33"]},
+ {"activity": "Operação de torno mecânico sem proteção nas partes móveis", "norms": ["NR-12"]},
+ {"activity": "Entrega de luvas, capacete e botina para equipe nova", "norms": ["NR-06"]},
+ {"activity": "Troca de motor elétrico de esteira transportadora", "norms": ["NR-12", "NR-10"]},
+ {"activity": "Solda dentro de silo vazio com acesso por escotilha superior", "norms": ["NR-33", "NR-35"]},
+ {"activity": "Limpeza de calhas no telhado de galpão industrial", "norms": ["NR-35"]},
+ {"activity": "Manutenção de subestação com desligamento e bloqueio", "norms": ["NR-10"]},
+ {"activity": "Ajuste de sensor de segurança em injetora de plástico", "norms": ["NR-12"]},
+ {"activity": "Resgate de trabalhador em poço de visita", "norms": ["NR-33"]},
+ {"activity": "Instalação de linha de vida em cobertura metálica", "norms": ["NR-35"]}
+]

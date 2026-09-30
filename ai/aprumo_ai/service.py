@@ -22,7 +22,7 @@ class AssessmentService:
         reasoner: Reasoner,
         corpus_date: str,
         k: int = 12,
-        min_score: float = 4.0,
+        min_score: float = 1.0,
     ) -> None:
         self._retriever = retriever
         self._reasoner = reasoner

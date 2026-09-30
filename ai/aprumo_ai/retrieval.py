@@ -48,7 +48,7 @@ def _norm_hit(norm: str, share: float) -> NormHit:
     return NormHit(norm=norm, title=NORM_TITLES.get(norm, norm), share=share)
 
 
-def rank_norms(hits: list[ScoredRequirement], min_share: float = 0.15) -> list[NormHit]:
+def rank_norms(hits: list[ScoredRequirement], min_share: float = 0.25) -> list[NormHit]:
     """Norma aplicável = participação na soma dos scores dos itens recuperados."""
     totals: dict[str, float] = defaultdict(float)
     for hit in hits:
