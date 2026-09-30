@@ -12,7 +12,8 @@ from pathlib import Path
 
 from aprumo_ai.domain import NORM_TITLES
 from aprumo_ai.llm import FallbackLLM
-from aprumo_ai.providers import providers_from_env
+from aprumo_ai.hybrid import HybridRetriever
+from aprumo_ai.providers import providers_from_env, retriever_from_env
 from aprumo_ai.reasoner import LLMReasoner, QueryExpansion
 from aprumo_ai.resilience import RuleBasedReasoner
 from aprumo_ai.retrieval import BM25Retriever, load_corpus
@@ -55,11 +56,18 @@ def parse_floors(argv: list[str]) -> dict[str, float]:
     return {mode: float(value)}
 
 
-def build_modes() -> dict[str, Callable[[str], QueryExpansion | None]]:
-    modes: dict[str, Callable[[str], QueryExpansion | None]] = {
-        "bm25": lambda activity: None,
-        "bm25+regras": RuleBasedReasoner().expand_query,
+def build_modes(requirements: list, data_dir: Path, corpus_date: str) -> dict[str, tuple[AssessmentService, Callable[[str], QueryExpansion | None]]]:
+    """Modo → (serviço com o recuperador daquele modo, expansão da consulta)."""
+    lexical = AssessmentService(BM25Retriever(requirements), RuleBasedReasoner(), corpus_date)
+    retriever = retriever_from_env(requirements, data_dir)
+    hybrid = AssessmentService(retriever, RuleBasedReasoner(), corpus_date) if isinstance(retriever, HybridRetriever) else None
+    rules = RuleBasedReasoner().expand_query
+    modes: dict[str, tuple[AssessmentService, Callable[[str], QueryExpansion | None]]] = {
+        "bm25": (lexical, lambda activity: None),
+        "bm25+regras": (lexical, rules),
     }
+    if hybrid:
+        modes["híbrida"] = (hybrid, lambda activity: None)
     if "--no-llm" in sys.argv:
         return modes
     providers = providers_from_env()
@@ -70,22 +78,23 @@ def build_modes() -> dict[str, Callable[[str], QueryExpansion | None]]:
             time.sleep(1.5)  # respeita os limites por minuto dos planos gratuitos
             return reasoner.expand_query(activity)
 
-        modes["bm25+llm"] = paced
+        modes["híbrida+llm" if hybrid else "bm25+llm"] = (hybrid or lexical, paced)
     return modes
 
 
 def main() -> None:
     cases = json.loads((HERE / "cases.json").read_text(encoding="utf-8"))
     requirements, corpus_date = load_corpus(ROOT / "data" / "corpus.json")
-    service = AssessmentService(BM25Retriever(requirements), RuleBasedReasoner(), corpus_date)
+    modes = build_modes(requirements, ROOT / "data", corpus_date)
+    service = modes["bm25"][0]
 
     summary = ["| Modo | Norma principal certa | Precisão | Revocação | F1 |", "|---|---:|---:|---:|---:|"]
     errors = ["| Modo | Atividade | Esperado | Previsto |", "|---|---|---|---|"]
     f1_by_mode: dict[str, float] = {}
-    for name, build in build_modes().items():
+    for name, (mode_service, build) in modes.items():
         pairs, principal_hits = [], 0
         for case in cases:
-            ranked, _ = predict(service, case["activity"], build(case["activity"]))
+            ranked, _ = predict(mode_service, case["activity"], build(case["activity"]))
             predicted, gold = set(ranked), set(case["norms"])
             pairs.append((predicted, gold))
             principal_hits += bool(ranked) and ranked[0] in gold
