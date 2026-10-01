@@ -103,7 +103,7 @@ def test_servico_anonimiza_e_manda_so_os_itens_da_pergunta():
 
 def test_servico_limita_o_tamanho_da_fala_do_modelo():
     reasoner = RecordingReasoner(Turn(answered=True, reply="x" * 2000, follow_up="y" * 2000))
-    turn = service(reasoner).converse("Troca de lâmpada em poste", QUESTION, [REQ], "Sim", allow_follow_up=True)
+    turn = service(reasoner).converse("Troca de lâmpada em poste", QUESTION, [REQ], "Sim, com linha de vida", allow_follow_up=True)
     assert len(turn.reply) <= 600 and len(turn.follow_up) <= 300
 
 
@@ -148,3 +148,14 @@ def test_complemento_do_aprofundamento_sempre_conta_como_resposta():
     reasoner = RecordingReasoner(Turn(answered=False, reply="Confirme a pergunta original."))
     turn = service(reasoner).converse("Troca de lâmpada em poste", QUESTION, [REQ], "O Paulo faz até amanhã", allow_follow_up=False)
     assert turn.answered is True and turn.follow_up is None
+
+
+def test_resposta_rapida_nao_gasta_chamada_ao_modelo():
+    reasoner = RecordingReasoner(Turn(answered=True, reply="Não deveria aparecer."))
+    app = service(reasoner)
+    yes = app.converse("Troca de lâmpada em poste", QUESTION, [REQ], "Sim", allow_follow_up=True)
+    no = app.converse("Troca de lâmpada em poste", QUESTION, [REQ], "Não.", allow_follow_up=True)
+    unsure = app.converse("Troca de lâmpada em poste", QUESTION, [REQ], "não sei", allow_follow_up=True)
+    assert reasoner.seen == {}
+    assert yes.answered and yes.follow_up is None
+    assert no.follow_up and unsure.follow_up is None

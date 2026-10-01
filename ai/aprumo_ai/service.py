@@ -6,6 +6,7 @@ from aprumo_ai.domain import NORM_TITLES, QA, Analysis, Finding, NormHit, Questi
 from aprumo_ai.privacy import redact
 from aprumo_ai.text import strip_accents
 from aprumo_ai.reasoner import Reasoner, complete_questions
+from aprumo_ai.resilience import quick_turn
 from aprumo_ai.accidents.trends import SectorTrend
 from aprumo_ai.retrieval import Retriever, ScoredRequirement, norms_of, rank_norms, select_requirements
 
@@ -111,6 +112,10 @@ class AssessmentService:
     ) -> Turn:
         """Um turno da conversa. O modelo só vê os itens que a pergunta verifica, e a fala dele é
         cortada: é comentário de conversa, não entra no relatório."""
+        quick = quick_turn(answer, allow_follow_up)
+        if quick is not None:
+            METRICS.inc("turn", kind="rapida")
+            return quick
         cited = [r for r in requirements if r.ref in question.refs]
         turn = self._reasoner.converse(redact(activity), question, cited, redact(answer), allow_follow_up)
         # Dúvida do usuário volta para a mesma pergunta; aprofundar junto viraria duas perguntas de uma vez.

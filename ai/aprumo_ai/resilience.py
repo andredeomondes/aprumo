@@ -126,6 +126,16 @@ def _rule_turn(answer: str, allow_follow_up: bool) -> Turn:
     return Turn(reply="Registrado.")
 
 
+_QUICK = {"sim", "nao", "ainda nao", "nao sei"}
+
+
+def quick_turn(answer: str, allow_follow_up: bool) -> Turn | None:
+    """Resposta de uma palavra não tem o que interpretar: o turno sai por regra, na hora,
+    sem gastar chamada ao modelo. Qualquer outra fala devolve None e segue para o modelo."""
+    text = strip_accents(answer.strip().lower()).rstrip(".!")
+    return _rule_turn(answer, allow_follow_up) if text in _QUICK else None
+
+
 class CachingReasoner:
     """Memoriza respostas por entrada. Quem testa os exemplos prontos não gasta chamada."""
 
