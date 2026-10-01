@@ -73,10 +73,14 @@ class NormHit(BaseModel):
     share: float
 
 
+QuestionSection = Literal["planejamento", "pessoas", "controles", "execucao", "emergencia"]
+
+
 class Question(BaseModel):
     id: str
     text: str
     refs: list[str]
+    section: QuestionSection = "controles"
 
 
 class Analysis(BaseModel):
@@ -94,9 +98,23 @@ class QA(BaseModel):
 
 
 class Finding(BaseModel):
+    """Um requisito avaliado. `justification` é a análise, `evidence` é o que foi informado na
+    conversa e `recommendation` é a ação recomendada. Ficam separados porque um relatório
+    técnico precisa distinguir o que foi dito do que foi concluído."""
+
     ref: str
     status: Status
     justification: str
+    evidence: str = ""
+    recommendation: str = ""
+
+
+class Turn(BaseModel):
+    """Uma fala do assistente depois de uma resposta: reage, tira dúvida ou aprofunda."""
+
+    answered: bool = True
+    reply: str = ""
+    follow_up: str | None = None
 
 
 class Report(BaseModel):
@@ -108,3 +126,4 @@ class Report(BaseModel):
     generated_at: str
     disclaimer: str = DISCLAIMER
     risk_context: list[SectorTrend] = []
+    answers: list[QA] = []

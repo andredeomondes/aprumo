@@ -21,10 +21,99 @@
  "questions": [
   {
    "id": "q1",
-   "text": "Há linha de vida?",
+   "text": "Existe procedimento definido antes do início para atender a NR-35 item 35.5.1?",
    "refs": [
     "NR-35 item 35.5.1"
-   ]
+   ],
+   "section": "planejamento"
+  },
+  {
+   "id": "q2",
+   "text": "A condição prevista em NR-35 item 35.5.1 foi verificada no local antes da atividade?",
+   "refs": [
+    "NR-35 item 35.5.1"
+   ],
+   "section": "planejamento"
+  },
+  {
+   "id": "q3",
+   "text": "Há responsável designado para verificar o atendimento de NR-35 item 35.5.1?",
+   "refs": [
+    "NR-35 item 35.5.1"
+   ],
+   "section": "pessoas"
+  },
+  {
+   "id": "q4",
+   "text": "A equipe foi orientada sobre o controle relacionado a NR-35 item 35.5.1?",
+   "refs": [
+    "NR-35 item 35.5.1"
+   ],
+   "section": "pessoas"
+  },
+  {
+   "id": "q5",
+   "text": "A medida exigida por NR-35 item 35.5.1 está implantada e disponível no local?",
+   "refs": [
+    "NR-35 item 35.5.1"
+   ],
+   "section": "controles"
+  },
+  {
+   "id": "q6",
+   "text": "Há registro ou evidência verificável do atendimento de NR-35 item 35.5.1?",
+   "refs": [
+    "NR-35 item 35.5.1"
+   ],
+   "section": "controles"
+  },
+  {
+   "id": "q7",
+   "text": "O controle relacionado a NR-35 item 35.5.1 foi inspecionado e está em condição de uso?",
+   "refs": [
+    "NR-35 item 35.5.1"
+   ],
+   "section": "controles"
+  },
+  {
+   "id": "q8",
+   "text": "O atendimento de NR-35 item 35.5.1 será acompanhado durante toda a execução?",
+   "refs": [
+    "NR-35 item 35.5.1"
+   ],
+   "section": "execucao"
+  },
+  {
+   "id": "q9",
+   "text": "Existe critério para interromper o trabalho se NR-35 item 35.5.1 deixar de ser atendido?",
+   "refs": [
+    "NR-35 item 35.5.1"
+   ],
+   "section": "execucao"
+  },
+  {
+   "id": "q10",
+   "text": "A equipe sabe como agir se o controle relacionado a NR-35 item 35.5.1 falhar?",
+   "refs": [
+    "NR-35 item 35.5.1"
+   ],
+   "section": "emergencia"
+  },
+  {
+   "id": "q11",
+   "text": "O responsável sabe quem acionar diante de uma condição insegura ligada a NR-35 item 35.5.1?",
+   "refs": [
+    "NR-35 item 35.5.1"
+   ],
+   "section": "emergencia"
+  },
+  {
+   "id": "q12",
+   "text": "O encerramento da atividade inclui conferir e registrar o atendimento de NR-35 item 35.5.1?",
+   "refs": [
+    "NR-35 item 35.5.1"
+   ],
+   "section": "emergencia"
   }
  ],
  "risk_context": [

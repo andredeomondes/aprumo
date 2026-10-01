@@ -51,7 +51,9 @@ def test_caminho_feliz_descarta_referencia_inventada():
     result = service(FakeReasoner()).analyze("Troca de lâmpada em poste a 6 metros de altura")
     assert result.status == "ok"
     assert result.norms[0].norm == "NR-35"
-    assert [q.id for q in result.questions] == ["q1"]
+    assert len(result.questions) >= 10
+    assert result.questions[0].id == "q1"
+    assert all(set(q.refs) <= {r.ref for r in result.requirements} for q in result.questions)
     assert "NR-35" in result.message
 
 
@@ -76,6 +78,8 @@ def test_relatorio_descarta_inventado_e_completa_faltante():
     assert report.corpus_date == "2026-09-30"
     assert [n.norm for n in report.norms] == ["NR-35"]
     assert all("carlos@x.com" not in s for s in fake.seen)
+    assert report.answers[0].question == "Quem executa?"
+    assert "carlos@x.com" not in report.answers[0].answer
 
 
 class NormPickingReasoner(FakeReasoner):

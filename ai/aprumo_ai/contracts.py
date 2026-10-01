@@ -9,7 +9,8 @@ import json
 from pathlib import Path
 
 from aprumo_ai.accidents.trends import SectorTrend
-from aprumo_ai.domain import Analysis, Finding, NormHit, Question, Report, Requirement
+from aprumo_ai.domain import QA, Analysis, Finding, NormHit, Report, Requirement
+from aprumo_ai.reasoner import complete_questions
 
 OUT = Path(__file__).resolve().parents[2] / "contracts"
 
@@ -24,13 +25,17 @@ def examples() -> dict[str, dict]:
     norms = [NormHit(norm="NR-35", title="Trabalho em Altura", share=1.0)]
     analysis = Analysis(
         status="ok", message="Normas aplicáveis: NR-35.", norms=norms, requirements=[_REQUIREMENT],
-        questions=[Question(id="q1", text="Há linha de vida?", refs=[_REQUIREMENT.ref])], risk_context=[_TREND],
+        questions=complete_questions([_REQUIREMENT], []), risk_context=[_TREND],
     )
     report = Report(
         activity="Troca de luminária em poste", norms=norms,
-        findings=[Finding(ref=_REQUIREMENT.ref, status="pendente", justification="Sem linha de vida.")],
+        findings=[Finding(
+            ref=_REQUIREMENT.ref, status="pendente", justification="Sem linha de vida.",
+            evidence="O responsável informou que não há linha de vida.",
+            recommendation="Instalar linha de vida e registrar a inspeção.",
+        )],
         requirements=[_REQUIREMENT], corpus_date="2026-09-30", generated_at="2026-09-30T20:00:00+00:00",
-        risk_context=[_TREND],
+        risk_context=[_TREND], answers=[QA(question="Há linha de vida?", answer="Não")],
     )
     return {
         "analysis.json": analysis.model_dump(mode="json"),

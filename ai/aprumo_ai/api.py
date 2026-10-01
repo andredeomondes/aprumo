@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from aprumo_ai.domain import QA, Analysis, Report, Requirement
+from aprumo_ai.domain import QA, Analysis, Question, Report, Requirement, Turn
 from aprumo_ai.observability import METRICS, Metrics
 from aprumo_ai.reasoner import ReasonerError
 
@@ -18,6 +18,10 @@ class Assessor(Protocol):
 
     def evaluate(self, activity: str, requirements: list[Requirement], answers: list[QA]) -> Report: ...
 
+    def converse(
+        self, activity: str, question: Question, requirements: list[Requirement], answer: str, allow_follow_up: bool
+    ) -> Turn: ...
+
 
 class AnalyzeRequest(BaseModel):
     activity: str = Field(min_length=10, max_length=2000)
@@ -27,6 +31,14 @@ class EvaluateRequest(BaseModel):
     activity: str = Field(min_length=10, max_length=2000)
     requirements: list[Requirement] = Field(min_length=1, max_length=30)
     answers: list[QA] = Field(max_length=12)
+
+
+class ConverseRequest(BaseModel):
+    activity: str = Field(min_length=10, max_length=2000)
+    question: Question
+    requirements: list[Requirement] = Field(max_length=30)
+    answer: str = Field(min_length=1, max_length=2000)
+    allow_follow_up: bool = True
 
 
 def create_app(
@@ -64,6 +76,10 @@ def create_app(
     @app.post("/v1/analyze", response_model=Analysis, dependencies=[Depends(require_token)])
     def analyze(body: AnalyzeRequest) -> Analysis:
         return service.analyze(body.activity)
+
+    @app.post("/v1/converse", response_model=Turn, dependencies=[Depends(require_token)])
+    def converse(body: ConverseRequest) -> Turn:
+        return service.converse(body.activity, body.question, body.requirements, body.answer, body.allow_follow_up)
 
     @app.post("/v1/evaluate", response_model=Report, dependencies=[Depends(require_token)])
     def evaluate(body: EvaluateRequest) -> Report:

@@ -6,9 +6,9 @@ from collections import OrderedDict
 from collections.abc import Callable, Hashable
 from typing import TypeVar
 
-from aprumo_ai.domain import QA, Finding, Question, Requirement
+from aprumo_ai.domain import QA, Finding, Question, Requirement, Turn
 from aprumo_ai.observability import METRICS, Metrics
-from aprumo_ai.reasoner import QueryExpansion, Reasoner, ReasonerError
+from aprumo_ai.reasoner import QueryExpansion, Reasoner, ReasonerError, complete_questions
 from aprumo_ai.text import strip_accents
 
 log = logging.getLogger("aprumo.resilience")
@@ -62,14 +62,7 @@ class RuleBasedReasoner:
         return QueryExpansion(is_work_activity=is_work, terms=" ".join(terms), norms=norms)
 
     def write_questions(self, activity: str, requirements: list[Requirement]) -> list[Question]:
-        return [
-            Question(
-                id=f"q{i}",
-                text=f"Como este requisito está atendido na atividade? {_summary(r.text)}",
-                refs=[r.ref],
-            )
-            for i, r in enumerate(requirements[:6], start=1)
-        ]
+        return complete_questions(requirements, [])
 
     def evaluate(self, activity: str, requirements: list[Requirement], answers: list[QA]) -> list[Finding]:
         return [
@@ -81,9 +74,10 @@ class RuleBasedReasoner:
             for r in requirements
         ]
 
-
-def _summary(text: str, limit: int = 180) -> str:
-    return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0] + "…"
+    def converse(
+        self, activity: str, question: Question, requirements: list[Requirement], answer: str, allow_follow_up: bool
+    ) -> Turn:
+        return _rule_turn(answer, allow_follow_up)
 
 
 class ResilientReasoner:
@@ -110,6 +104,26 @@ class ResilientReasoner:
 
     def evaluate(self, activity: str, requirements: list[Requirement], answers: list[QA]) -> list[Finding]:
         return self._run("avaliação", lambda r: r.evaluate(activity, requirements, answers))
+
+    def converse(
+        self, activity: str, question: Question, requirements: list[Requirement], answer: str, allow_follow_up: bool
+    ) -> Turn:
+        return self._run("conversa", lambda r: r.converse(activity, question, requirements, answer, allow_follow_up))
+
+
+_NEGATIVE = ("nao", "ainda nao")
+_UNKNOWN = ("nao sei", "nao tenho certeza", "desconheco")
+
+
+def _rule_turn(answer: str, allow_follow_up: bool) -> Turn:
+    """Conversa mínima sem modelo: registra a resposta e aprofunda o não uma única vez."""
+    text = strip_accents(answer.strip().lower()).rstrip(".!")
+    if text.startswith(_UNKNOWN):
+        return Turn(reply="Sem problema, fica registrado como não informado para conferência em campo.")
+    if text.startswith(_NEGATIVE):
+        follow_up = "O que falta para atender esse ponto, quem resolve e até quando?" if allow_follow_up else None
+        return Turn(reply="Registrado como ponto de atenção.", follow_up=follow_up)
+    return Turn(reply="Registrado.")
 
 
 class CachingReasoner:
@@ -148,3 +162,9 @@ class CachingReasoner:
             tuple((a.question, a.answer.strip().lower()) for a in answers),
         )
         return self._cached(key, lambda: self._inner.evaluate(activity, requirements, answers))
+
+    def converse(
+        self, activity: str, question: Question, requirements: list[Requirement], answer: str, allow_follow_up: bool
+    ) -> Turn:
+        # Cada fala é única: não há o que reaproveitar do cache.
+        return self._inner.converse(activity, question, requirements, answer, allow_follow_up)

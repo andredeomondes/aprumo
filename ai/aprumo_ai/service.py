@@ -2,9 +2,10 @@ from datetime import datetime, timezone
 from typing import Protocol
 
 from aprumo_ai.observability import METRICS
-from aprumo_ai.domain import NORM_TITLES, QA, Analysis, Finding, NormHit, Report, Requirement
+from aprumo_ai.domain import NORM_TITLES, QA, Analysis, Finding, NormHit, Question, Report, Requirement, Turn
 from aprumo_ai.privacy import redact
-from aprumo_ai.reasoner import Reasoner
+from aprumo_ai.text import strip_accents
+from aprumo_ai.reasoner import Reasoner, complete_questions
 from aprumo_ai.accidents.trends import SectorTrend
 from aprumo_ai.retrieval import Retriever, ScoredRequirement, norms_of, rank_norms, select_requirements
 
@@ -15,6 +16,21 @@ NO_BASIS = (
 # O prompt pede no máximo duas, mas prompt não é garantia: o limite vale no código.
 MAX_NORMS = 3
 NOT_COVERED = "As respostas não trouxeram informação sobre este item."
+MAX_REPLY_CHARS = 600
+MAX_FOLLOW_UP_CHARS = 300
+# Quem não sabe não tem o que detalhar: a conversa segue e o item fica como não informado.
+_UNSURE = ("nao sei", "nao tenho certeza", "desconheco")
+
+
+def _opening(understanding: str, norms: list[NormHit], questions: int) -> str:
+    """Abertura da conversa: o que foi entendido, quais normas entram e como vai ser."""
+    names = " e ".join(filter(None, [", ".join(n.norm for n in norms[:-1]), norms[-1].norm])) if norms else ""
+    applies = f"Isso entra em {names}." if len(norms) == 1 else f"Isso combina {names}."
+    lead = understanding.strip() or "Entendi a atividade."
+    return (
+        f"{lead} {applies} Vou conversar com você sobre {questions} pontos, começando pelo planejamento. "
+        "Responda com suas palavras; se não souber, é só dizer."
+    )
 
 
 class TrendProvider(Protocol):
@@ -30,9 +46,9 @@ class AssessmentService:
         retriever: Retriever,
         reasoner: Reasoner,
         corpus_date: str,
-        k: int = 12,
+        k: int = 18,
         min_score: float = 1.0,
-        per_norm: int = 4,
+        per_norm: int = 6,
         trends: TrendProvider | None = None,
     ) -> None:
         self._retriever = retriever
@@ -73,22 +89,38 @@ class AssessmentService:
             return Analysis(status="sem_base", message=NO_BASIS)
         requirements = select_requirements(hits, norms, per_norm=self._per_norm)
         valid = {r.ref for r in requirements}
-        questions = [
+        generated = [
             q for q in self._reasoner.write_questions(clean, requirements)
             if q.refs and set(q.refs) <= valid
         ]
+        questions = complete_questions(requirements, generated)
         METRICS.inc("analysis", status="ok")
         for norm in norms:
             METRICS.inc("norm_identified", norm=norm.norm)
-        names = ", ".join(n.norm for n in norms)
         return Analysis(
             status="ok",
-            message=f"Normas aplicáveis: {names}. Vou fazer {len(questions)} perguntas.",
+            message=_opening(expansion.understanding, norms, len(questions)),
             norms=norms,
             requirements=requirements,
             questions=questions,
             risk_context=self._risk_context([n.norm for n in norms]),
         )
+
+    def converse(
+        self, activity: str, question: Question, requirements: list[Requirement], answer: str, allow_follow_up: bool
+    ) -> Turn:
+        """Um turno da conversa. O modelo só vê os itens que a pergunta verifica, e a fala dele é
+        cortada: é comentário de conversa, não entra no relatório."""
+        cited = [r for r in requirements if r.ref in question.refs]
+        turn = self._reasoner.converse(redact(activity), question, cited, redact(answer), allow_follow_up)
+        # Dúvida do usuário volta para a mesma pergunta; aprofundar junto viraria duas perguntas de uma vez.
+        unsure = strip_accents(answer.strip().lower()).startswith(_UNSURE)
+        may_follow_up = allow_follow_up and turn.answered and turn.follow_up and not unsure
+        follow_up = turn.follow_up.strip()[:MAX_FOLLOW_UP_CHARS] if may_follow_up else None
+        METRICS.inc("turn", kind="duvida" if not turn.answered else "aprofundamento" if follow_up else "resposta")
+        # Quem responde a um aprofundamento está completando a resposta: sempre conta, ou a conversa trava.
+        answered = turn.answered or not allow_follow_up
+        return Turn(answered=answered, reply=turn.reply.strip()[:MAX_REPLY_CHARS], follow_up=follow_up or None)
 
     def evaluate(self, activity: str, requirements: list[Requirement], answers: list[QA]) -> Report:
         clean_activity = redact(activity)
@@ -111,6 +143,7 @@ class AssessmentService:
             corpus_date=self._corpus_date,
             generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
             risk_context=self._risk_context(sorted({r.norm for r in requirements})),
+            answers=clean_answers,
         )
 
     def _risk_context(self, norms: list[str]) -> list[SectorTrend]:

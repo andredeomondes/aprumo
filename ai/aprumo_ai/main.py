@@ -6,6 +6,7 @@ from pathlib import Path
 
 from aprumo_ai.accidents.trends import TrendService
 from aprumo_ai.api import create_app
+from aprumo_ai.environment import load_local_environment
 from aprumo_ai.llm import FallbackLLM
 from aprumo_ai.providers import providers_from_env, retriever_from_env
 from aprumo_ai.reasoner import LLMReasoner
@@ -14,6 +15,10 @@ from aprumo_ai.retrieval import load_corpus
 from aprumo_ai.service import AssessmentService
 
 logging.basicConfig(level=logging.INFO)
+
+# `uvicorn aprumo_ai.main:app` agora funciona no desenvolvimento mesmo quando
+# quem iniciou o processo esqueceu `--env-file .env`.
+load_local_environment()
 
 CORPUS = Path(__file__).resolve().parents[1] / "data" / "corpus.json"
 

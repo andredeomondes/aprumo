@@ -20,7 +20,12 @@ def test_regras_recusam_fora_do_dominio():
 
 def test_regras_perguntam_sobre_cada_item_citando_a_ref():
     questions = RuleBasedReasoner().write_questions("poste", REQS)
-    assert [q.refs for q in questions] == [[REQS[0].ref], [REQS[1].ref]]
+    assert 10 <= len(questions) <= 12
+    assert {ref for question in questions for ref in question.refs} == {REQS[0].ref, REQS[1].ref}
+    assert [question.section for question in questions] == sorted(
+        [question.section for question in questions],
+        key=["planejamento", "pessoas", "controles", "execucao", "emergencia"].index,
+    )
 
 
 def test_regras_devolvem_decisao_ao_profissional():

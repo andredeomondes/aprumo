@@ -28,7 +28,7 @@ def test_falha_do_modelo_vira_reasoner_error():
 def test_expansao_usa_limite_curto():
     llm = FakeLLM(QueryExpansion(is_work_activity=True, terms="altura"))
     assert LLMReasoner(llm).expand_query("poste").terms == "altura"
-    assert llm.calls[0]["max_tokens"] <= 300
+    assert llm.calls[0]["max_tokens"] <= 400
 
 
 def test_perguntas_levam_itens_resumidos_no_prompt():
@@ -37,7 +37,9 @@ def test_perguntas_levam_itens_resumidos_no_prompt():
     assert questions[0].refs == ["NR-35 item 35.5.1"]
     prompt = llm.calls[0]["prompt"]
     assert "[NR-35 item 35.5.1] Sistema de proteção contra quedas." in prompt
-    assert len(prompt) < 900, "texto do item deve ser cortado para economizar tokens"
+    assert "10 a 12 perguntas" in prompt
+    assert "section (planejamento | pessoas | controles | execucao | emergencia)" in prompt
+    assert len(prompt) < 1500, "texto do item deve ser cortado para economizar tokens"
 
 
 def test_avaliacao_inclui_respostas():

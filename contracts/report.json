@@ -11,7 +11,9 @@
   {
    "ref": "NR-35 item 35.5.1",
    "status": "pendente",
-   "justification": "Sem linha de vida."
+   "justification": "Sem linha de vida.",
+   "evidence": "O responsável informou que não há linha de vida.",
+   "recommendation": "Instalar linha de vida e registrar a inspeção."
   }
  ],
  "requirements": [
@@ -49,6 +51,12 @@
     980
    ],
    "forecast_beats_naive": true
+  }
+ ],
+ "answers": [
+  {
+   "question": "Há linha de vida?",
+   "answer": "Não"
   }
  ]
 }
