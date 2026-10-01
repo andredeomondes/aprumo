@@ -2,7 +2,7 @@
 
 Conferência de requisitos das Normas Regulamentadoras (NRs) antes de uma atividade de risco.
 
-O profissional de segurança descreve a atividade planejada. O Aprumo identifica as normas aplicáveis entre as **36 NRs vigentes**, faz perguntas derivadas dos itens normativos recuperados, mostra a série de acidentes de trabalho do setor e devolve um relatório em PDF que confronta o que foi informado com o que a norma exige, **citando o item de origem em cada linha**.
+O profissional de segurança descreve a atividade planejada. O Aprumo identifica as normas aplicáveis entre as **36 NRs vigentes**, conversa sobre os requisitos a partir dos itens normativos recuperados e devolve a **minuta de um relatório técnico em PDF**, que confronta o que foi informado com o que a norma exige, **citando o item de origem em cada linha**. A minuta só vira documento da empresa depois de revisada e assinada por profissional habilitado.
 
 ## O problema
 
@@ -15,7 +15,8 @@ Uma mesma atividade pode acionar várias normas ao mesmo tempo. Trocar uma lumin
 | Identifica as NRs aplicáveis a uma descrição em linguagem de campo | Não emite laudo nem parecer técnico |
 | Pergunta sobre os requisitos recuperados, citando o item | Não decide enquadramento que depende de juízo profissional: marca como "decisão do profissional" |
 | Recusa dado de baixa qualidade: a série de acidentes só aparece se passar no filtro | Não afirma sem fonte: sem base recuperada, diz que não encontrou |
-| Gera relatório em PDF com status por item | Não inventa item: referência fora do que foi recuperado é descartada |
+| Conversa em vez de aplicar questionário: tira dúvida sem avançar e aprofunda uma resposta negativa | Não inventa item: referência fora do que foi recuperado é descartada |
+| Gera a minuta do relatório técnico em PDF: análise item a item, plano de ação, conclusão e campos de assinatura | Não libera a atividade: a conclusão é montada por regra e devolve a decisão ao profissional |
 | Mascara CPF, e-mail, telefone, CNPJ e matrícula antes de chamar o modelo | Não substitui a leitura da norma |
 
 ## Como as temáticas do edital aparecem no projeto
@@ -53,9 +54,23 @@ No frontend, a mesma direção é preservada: componentes dependem da máquina d
 1. A descrição passa por `redact()`: dado pessoal sai antes de qualquer chamada externa.
 2. O modelo diz se é atividade de trabalho, traduz a linguagem de campo para o vocabulário das normas ("poste" → "trabalho em altura") e escolhe até três normas **num catálogo fechado** com as 36 vigentes.
 3. A busca híbrida recupera os itens **dentro de cada norma escolhida**, para a norma extensa não afogar a menor.
-4. O modelo escreve de 3 a 6 perguntas a partir dos itens recuperados. Pergunta que cite item fora dessa lista é descartada.
-5. Para normas setoriais, entra a série de acidentes típicos do setor.
-6. Com as respostas, o modelo classifica cada item (atendido, pendente, não informado, decisão do profissional). Item que o modelo não avaliou vira "não informado"; item inventado é descartado.
+4. O modelo escreve de 10 a 12 perguntas a partir dos itens recuperados, organizadas em cinco seções (planejamento, equipe, medidas de controle, execução, emergência). Pergunta que cite item fora dessa lista é descartada.
+5. Cada resposta é um turno de conversa. Se a pessoa tira uma dúvida, o assistente explica e continua na mesma pergunta. Se a resposta é negativa, ele aprofunda uma única vez (o que falta, quem resolve, até quando). "Não sei" segue em frente. Respostas de uma palavra ("Sim", "Não", "Não sei") são tratadas por regra, sem chamar o modelo. A partir de três respostas dá para encerrar e gerar o relatório com o que já foi dito.
+6. Com as respostas, o modelo classifica cada item (atendido, pendente, não informado, decisão do profissional) e registra a evidência informada, a análise e a recomendação. Item que o modelo não avaliou vira "não informado"; item inventado é descartado.
+7. O BFF monta o PDF. Empresa, local e responsável são preenchidos na tela e entram só no documento, sem passar pelo modelo.
+
+### O relatório
+
+A minuta segue a estrutura de um relatório técnico de segurança do trabalho:
+
+- capa com número do relatório, identificação e parecer;
+- objetivo, metodologia, descrição da atividade e base normativa;
+- análise item a item: requisito normativo, evidência informada, análise e recomendação;
+- plano de ação com colunas de responsável e prazo;
+- conclusão, limitações e campos de assinatura;
+- anexo com a entrevista completa.
+
+A conclusão é o parágrafo mais sensível do documento, então não fica a cargo do modelo: é montada por código a partir das contagens (`bff/src/pdf/report-text.ts`). O mesmo resultado gera sempre o mesmo texto, e ele nunca libera a atividade por conta própria.
 
 ## Modelos de linguagem
 
@@ -73,7 +88,7 @@ Cadeia de provedores gratuitos, todos pela API compatível com a da OpenAI:
 - Toda resposta é validada por Pydantic, venha de onde vier.
 - Cache por entrada: repetir um exemplo não gasta chamada.
 - Se nenhum provedor responder, regras locais assumem (dicionário de termos de campo, perguntas direto dos itens, avaliação devolvida ao profissional). A aplicação não cai.
-- Economia de tokens: três chamadas por conferência, texto de cada item cortado em 400 caracteres no prompt, limite de saída por etapa.
+- Economia de tokens: três chamadas fixas por conferência (entendimento, perguntas, avaliação) mais uma chamada curta por resposta escrita; respostas de uma palavra não chamam o modelo; texto de cada item cortado em 400 caracteres no prompt; limite de saída por etapa.
 - O `gpt-oss-20b` da Groq saiu da cadeia depois de falhar em 10 de 10 gerações de JSON na avaliação.
 
 ## Dados
@@ -154,7 +169,8 @@ Acidentes de trabalho não oscilam assim. As variações vêm da publicação do
 | Abuso distribuído | Orçamento diário de análises no BFF; gerar PDF não consome |
 | Corpo gigante ou malformado | Limite de 256 KB e validação zod; resposta 400/413, nunca 500 |
 | Prompt injection | Texto do usuário delimitado como dado no prompt; saída validada por schema; referências conferidas contra o que foi recuperado |
-| Dado pessoal | Anonimização antes do modelo; o relatório guarda a atividade já anonimizada |
+| Dado pessoal | Anonimização antes do modelo; o relatório guarda a atividade já anonimizada; a identificação do documento não é enviada ao modelo |
+| Um visitante ler o relatório de outro | Histórico filtrado por navegador (identificador aleatório guardado no navegador, sem cadastro) |
 | Segredos | Chaves só em variável de ambiente; `.env` fora do git |
 | Dependências | `npm audit` e `pip-audit` sem vulnerabilidades conhecidas na data da auditoria |
 
@@ -165,7 +181,10 @@ Acidentes de trabalho não oscilam assim. As variações vêm da publicação do
 - O gabarito tem 33 casos escritos pelo autor e é rígido: uma norma plausível a mais conta como erro.
 - A série de acidentes está desligada pelo filtro de qualidade enquanto a fonte tiver falhas de publicação (ver Séries temporais).
 - Os planos gratuitos têm cota: o orçamento diário e a cadeia de provedores reduzem, mas não eliminam, o risco de indisponibilidade.
-- O relatório é apoio à conferência. A responsabilidade técnica continua do profissional habilitado.
+- Não há login. O histórico fica preso ao navegador e some quando o servidor reinicia; contas de usuário e armazenamento permanente são o próximo passo para uso real numa empresa.
+- O texto do relatório depende de modelos gratuitos e pode sair com erro de português ou recomendação genérica. Por isso a conclusão é feita por regra e o documento exige revisão.
+- Um "sim" sem detalhe é declaração de quem respondeu, não evidência conferida em campo.
+- O relatório é uma minuta de apoio à conferência. A responsabilidade técnica continua do profissional habilitado, que revisa e assina.
 
 ## Como rodar localmente
 
