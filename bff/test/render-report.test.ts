@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { APRUMO_LOGO } from "../src/pdf/logo.js";
 import { renderReportPdf } from "../src/pdf/render-report.js";
 import type { Report } from "../src/schemas.js";
 
@@ -13,12 +14,16 @@ const report: Report = {
     { norm: "NR-10", item: "10.5.1", annex: null, text: "Desenergização.", revoked: false, ref: "NR-10 item 10.5.1" },
   ],
   findings: [
-    { ref: "NR-35 item 35.5.1", status: "pendente", justification: "Não há linha de vida." },
-    { ref: "NR-10 item 10.5.1", status: "atendido", justification: "Circuito desligado e bloqueado." },
+    { ref: "NR-35 item 35.5.1", status: "pendente", justification: "Não há linha de vida.", evidence: "O responsável informou que a instalação está pendente.", recommendation: "Instalar linha de vida e registrar a inspeção." },
+    { ref: "NR-10 item 10.5.1", status: "atendido", justification: "Circuito desligado e bloqueado.", evidence: "", recommendation: "" },
   ],
   corpus_date: "2026-09-30",
   generated_at: "2026-09-30T20:00:00+00:00",
   disclaimer: "Não substitui profissional habilitado.",
+  answers: [
+    { question: "A atividade foi planejada e possui responsável definido?", answer: "Sim, conforme procedimento interno." },
+    { question: "Há proteção contra quedas disponível e inspecionada?", answer: "Não; a instalação está pendente." },
+  ],
   risk_context: [
     {
       norm: "NR-18", sector: "Construção", months: ["202506", "202507"], values: [900, 950],
@@ -32,7 +37,8 @@ describe("renderReportPdf", () => {
   it("gera PDF válido", async () => {
     const pdf = await renderReportPdf(report);
     expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
-    expect(pdf.length).toBeGreaterThan(1500);
+    expect(pdf.length).toBeGreaterThan(8000);
+    expect((pdf.toString("latin1").match(/\/Type\s*\/Page\b/g) ?? []).length).toBeGreaterThanOrEqual(3);
   });
 
   it("aguenta relatório longo sem quebrar", async () => {
@@ -47,5 +53,12 @@ describe("renderReportPdf", () => {
     const withContext = await renderReportPdf(report);
     const without = await renderReportPdf({ ...report, risk_context: [] });
     expect(withContext.length).toBeGreaterThan(without.length + 300);
+  });
+
+
+  it("incorpora a logo oficial como PNG", () => {
+    expect(APRUMO_LOGO.subarray(1, 4).toString()).toBe("PNG");
+    expect(APRUMO_LOGO.readUInt32BE(16)).toBeGreaterThanOrEqual(300);
+    expect(APRUMO_LOGO.readUInt32BE(20)).toBeGreaterThanOrEqual(300);
   });
 });

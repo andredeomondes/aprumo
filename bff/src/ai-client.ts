@@ -1,5 +1,6 @@
 import type { z } from "zod";
-import { AnalysisSchema, ReportSchema, type Analysis, type EvaluateBody, type Report } from "./schemas.js";
+import { ZodError } from "zod";
+import { AnalysisSchema, ReportSchema, TurnSchema, type Analysis, type EvaluateBody, type ConverseBody, type Report, type Turn } from "./schemas.js";
 
 export class AiServiceError extends Error {
   constructor(readonly status: number, message: string) {
@@ -10,6 +11,7 @@ export class AiServiceError extends Error {
 export interface AiClient {
   analyze(activity: string): Promise<Analysis>;
   evaluate(body: EvaluateBody): Promise<Report>;
+  converse(body: ConverseBody): Promise<Turn>;
   metrics(): Promise<unknown>;
 }
 
@@ -27,6 +29,10 @@ export class HttpAiClient implements AiClient {
 
   evaluate(body: EvaluateBody): Promise<Report> {
     return this.post("/v1/evaluate", body, ReportSchema);
+  }
+
+  converse(body: ConverseBody): Promise<Turn> {
+    return this.post("/v1/converse", body, TurnSchema);
   }
 
   async metrics(): Promise<unknown> {
@@ -60,6 +66,13 @@ export class HttpAiClient implements AiClient {
       const message = typeof payload.detail === "string" ? payload.detail : "Falha no serviço de análise.";
       throw new AiServiceError(res.status >= 500 ? 502 : res.status, message);
     }
-    return schema.parse(payload);
+    try {
+      return schema.parse(payload);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        throw new AiServiceError(502, "O serviço de análise devolveu uma resposta incompleta. Tente novamente.");
+      }
+      throw error;
+    }
   }
 }

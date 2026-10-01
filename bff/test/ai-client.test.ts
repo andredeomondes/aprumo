@@ -31,6 +31,28 @@ describe("HttpAiClient", () => {
 
   it("resposta fora do contrato é rejeitada", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ status: "talvez" }), { status: 200 })));
-    await expect(new HttpAiClient("http://ai", "t").analyze("x")).rejects.toThrow();
+    await expect(new HttpAiClient("http://ai", "t").analyze("x")).rejects.toMatchObject({
+      status: 502,
+      message: "O serviço de análise devolveu uma resposta incompleta. Tente novamente.",
+    });
+  });
+
+  it("não aceita análise concluída com menos de dez perguntas", async () => {
+    const incomplete = {
+      status: "ok",
+      message: "Vou fazer 4 perguntas.",
+      norms: [],
+      requirements: [],
+      questions: Array.from({ length: 4 }, (_, index) => ({
+        id: `q${index + 1}`,
+        text: `Pergunta ${index + 1}`,
+        refs: [],
+        section: "controles",
+      })),
+      risk_context: [],
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(incomplete), { status: 200 })));
+
+    await expect(new HttpAiClient("http://ai", "t").analyze("atividade válida")).rejects.toMatchObject({ status: 502 });
   });
 });
