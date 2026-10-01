@@ -128,6 +128,23 @@ export function ReportPane({ state, collapsed, mobileActive, onCollapse, onDownl
         {tab === "overview" &&
           (report && counts ? (
             <>
+              <section className="doc-fields" aria-labelledby="doc-fields-title">
+                <h3 id="doc-fields-title">Identificação do documento</h3>
+                <p>Preencha antes de baixar: sai na capa do PDF. O que ficar em branco aparece como "Não informado". Esses dados não vão para o modelo de linguagem.</p>
+                <div>
+                  {([
+                    ["company", "Empresa / unidade"],
+                    ["location", "Local da atividade"],
+                    ["responsible", "Responsável pela atividade"],
+                    ["reviewer", "Profissional de SST que vai revisar"],
+                  ] as const).map(([field, label]) => (
+                    <label key={field}>
+                      <span>{label}</span>
+                      <input value={identification[field]} maxLength={200} onChange={(event) => identify(field, event.target.value)} />
+                    </label>
+                  ))}
+                </div>
+              </section>
               <div className="status-grid" aria-label="Resumo por status">
                 {STATUS_ORDER.map((status) => (
                   <button
@@ -192,23 +209,6 @@ export function ReportPane({ state, collapsed, mobileActive, onCollapse, onDownl
                   );
                 })}
               </div>
-              <details className="doc-fields">
-                <summary>Identificação do documento (opcional)</summary>
-                <p>Esses dados entram só no PDF. Não são enviados ao modelo de linguagem.</p>
-                <div>
-                  {([
-                    ["company", "Empresa / unidade"],
-                    ["location", "Local da atividade"],
-                    ["responsible", "Responsável pela atividade"],
-                    ["reviewer", "Profissional de SST que vai revisar"],
-                  ] as const).map(([field, label]) => (
-                    <label key={field}>
-                      <span>{label}</span>
-                      <input value={identification[field]} maxLength={200} onChange={(event) => identify(field, event.target.value)} />
-                    </label>
-                  ))}
-                </div>
-              </details>
               <p className="report-foot">
                 Minuta de relatório técnico: só vale como documento da empresa depois de revisada e assinada por
                 profissional habilitado. {report.disclaimer}

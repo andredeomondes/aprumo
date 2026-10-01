@@ -482,8 +482,8 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .finish-link:hover { color: white; }
 .finding-field { margin-top: 8px !important; color: #c4ccd6 !important; font-size: 12.5px !important; }
 .finding-field strong { display: block; margin-bottom: 2px; color: var(--tertiary); font-size: 11px; font-weight: 600; letter-spacing: .02em; }
-.doc-fields { margin-top: 16px; border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; background: #101821; }
-.doc-fields summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.doc-fields { margin-bottom: 16px; border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; background: #101821; }
+.doc-fields h3 { margin: 0; font-size: 13px; font-weight: 600; }
 .doc-fields > p { margin: 8px 0; color: var(--tertiary); font-size: 11.5px; }
 .doc-fields > div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .doc-fields label { display: grid; gap: 4px; color: var(--muted); font-size: 11.5px; }

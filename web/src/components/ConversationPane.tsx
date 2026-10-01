@@ -155,7 +155,7 @@ export function ConversationPane({ state, busy, slow, data, mobileActive, onSend
       ) : (
         <div className="composer-area">
           <p className="composer-help">
-            {state.phase === "done" ? "Conferência concluída. A minuta do relatório está ao lado." : " "}
+            {state.phase === "done" ? "Conferência concluída. Preencha empresa, local e responsável no painel do relatório e baixe o PDF." : " "}
           </p>
         </div>
       )}
