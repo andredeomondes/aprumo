@@ -1,12 +1,42 @@
-# Aprumo
+<p align="center">
+  <img src="docs/assets/aprumo-logo.png" alt="Logo do Aprumo" width="120">
+</p>
 
-Conferência de requisitos das Normas Regulamentadoras (NRs) antes de uma atividade de risco.
+<h1 align="center">Aprumo</h1>
+
+<p align="center">
+  Conferência de requisitos das Normas Regulamentadoras (NRs) antes de uma atividade de risco.
+</p>
+
+<p align="center">
+  <a href="https://github.com/andredeomondes/aprumo/actions/workflows/ci.yml"><img src="https://github.com/andredeomondes/aprumo/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/licen%C3%A7a-MIT-2f6bf6" alt="Licença MIT">
+  <img src="https://img.shields.io/badge/NRs-36%20vigentes-2f6bf6" alt="36 NRs vigentes">
+</p>
+
+![Conferência em andamento: conversa, normas identificadas e relatório](docs/screenshots/02-conversa.png)
 
 O profissional de segurança descreve a atividade planejada. O Aprumo identifica as normas aplicáveis entre as **36 NRs vigentes**, conversa sobre os requisitos a partir dos itens normativos recuperados e devolve a **minuta de um relatório técnico em PDF**, que confronta o que foi informado com o que a norma exige, **citando o item de origem em cada linha**. A minuta só vira documento da empresa depois de revisada e assinada por profissional habilitado.
 
 ## O problema
 
 Uma mesma atividade pode acionar várias normas ao mesmo tempo. Trocar uma luminária num poste envolve trabalho em altura (NR-35) e serviço em eletricidade (NR-10), e quem consulta uma norma de cada vez tende a esquecer o requisito da outra. A conferência costuma acontecer de cabeça e não deixa registro.
+
+## Telas
+
+| Descrição da atividade | Relatório na tela |
+|---|---|
+| ![Tela inicial com a descrição da atividade](docs/screenshots/01-inicio.png) | ![Relatório com identificação, contadores e requisitos verificados](docs/screenshots/03-relatorio.png) |
+| O profissional descreve a atividade em linguagem de campo, com autocompletar local. | Cada requisito recebe um status, com a análise, a recomendação e o item citado. |
+
+| Catálogo de normas | Painel de operação |
+|---|---|
+| ![Catálogo com as 36 NRs da base](docs/screenshots/05-normas.png) | ![Painel com provedores, cache e latência](docs/screenshots/06-painel.png) |
+| As 36 NRs vigentes, com a quantidade de itens de cada uma. | Qual provedor respondeu, uso de cache, latência e orçamento diário. |
+
+**Minuta do relatório técnico em PDF** (capa com identificação e parecer; análise item a item e plano de ação):
+
+![Capa e página de análise do relatório em PDF](docs/screenshots/04-relatorio-pdf.png)
 
 ## O que ele faz e o que não faz
 
