@@ -71,16 +71,17 @@ Consequências:
 
 Para cobrir a temática de séries temporais do Anexo I, uma segunda fonte:
 
-**Estatísticas de acidentes do trabalho**, publicadas pelo MTE e pelo SmartLab, com série
-histórica por atividade econômica. Permite responder:
+**Comunicações de Acidente de Trabalho (CAT)** do INSS, com série mensal agregada por atividade
+econômica. Permite responder:
 
 > *Como evoluiu a ocorrência de acidentes nesse tipo de atividade nos últimos anos?*
 
 Isso acrescenta contexto de risco ao relatório de conformidade, em vez de ser um enxerto.
 
-**Status: a verificar.** A disponibilidade dessa fonte ainda não foi testada. Se não estiver
-acessível, alternativas são os microdados do CAT ou a base do Observatório de Segurança e
-Saúde no Trabalho.
+**Status: implementado com recusa por qualidade.** O pipeline cobre 35 de 38 arquivos mensais,
+descarta os três meses mais recentes por atraso de notificação e só publica a tendência quando
+a série passa no filtro de integridade. A fonte atual reprova nesse filtro, por isso o produto
+não exibe uma projeção enganosa. O detalhamento e as anomalias observadas estão no README.
 
 ## Dado pessoal
 
@@ -91,7 +92,7 @@ nome da empresa e localização da obra. Esse dado:
 
 - é anonimizado antes de qualquer chamada a modelo externo
 - não é persistido além do necessário para gerar o relatório
-- é o motivo pelo qual o modelo local é o padrão de execução
+- se nenhum provedor externo responder, a reserva por regras locais mantém o fluxo disponível
 
 Detalhamento em `04-arquitetura.md`.
 

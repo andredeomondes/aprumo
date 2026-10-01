@@ -54,21 +54,21 @@ relatório.
 
 O projeto é considerado bem-sucedido se, ao final:
 
-- [ ] O sistema identifica corretamente as normas aplicáveis a uma descrição de atividade
-- [ ] As perguntas da entrevista são **derivadas da norma recuperada**, não codificadas
+- [x] O sistema identifica corretamente as normas aplicáveis a uma descrição de atividade
+- [x] As perguntas da entrevista são **derivadas da norma recuperada**, não codificadas
 - [ ] A resposta a uma pergunta pode **acionar requisitos adicionais** (entrevista adaptativa)
-- [ ] Toda linha do relatório cita o item de origem
-- [ ] O sistema recusa responder quando não há base recuperada, e isso é demonstrável
-- [ ] Existe um conjunto de casos com gabarito e as métricas são medidas, não estimadas
+- [x] Toda linha do relatório cita o item de origem
+- [x] O sistema recusa responder quando não há base recuperada, e isso é demonstrável
+- [x] Existe um conjunto de casos com gabarito e as métricas são medidas, não estimadas
 - [ ] A aplicação está publicada e acessível por link
-- [ ] O serviço expõe métricas e há um painel mostrando o sistema em operação
+- [x] O serviço expõe métricas e há um painel mostrando o sistema em operação
 
-## Fora de escopo, por decisão
+## Decisões de escopo
 
-| Item | Por quê |
+| Item | Situação |
 |---|---|
 | Visão computacional | Exigiria treinar rede e comparar arquiteturas; não cabe no prazo sem comprometer o resto |
-| Todas as 36 NRs | O corpus inicial cobre as normas de maior intersecção; ampliar é questão de ingestão, não de arquitetura |
+| Todas as 36 NRs | Entregue depois do corpus inicial de seis normas; a ampliação confirmou que era uma questão de ingestão |
 | Ajuste fino de modelo de linguagem | O problema é de recuperação e ancoragem, não de estilo de geração |
 | Autenticação e multiusuário | Não acrescenta nada à demonstração técnica |
 

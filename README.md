@@ -46,6 +46,8 @@ ai   Python + FastAPI       36 NRs, busca híbrida, anonimização, cadeia de mo
 
 Cada serviço tem uma responsabilidade. As regras de negócio dependem de interfaces (`Retriever`, `Reasoner`, `StructuredLLM`, `Embedder`, `TrendProvider`, `AiClient`), não de implementações, então os testes rodam sem rede e sem chave de API.
 
+No frontend, a mesma direção é preservada: componentes dependem da máquina de estados da conferência, os casos de uso dependem da porta `AprumoGateway` e apenas o adaptador em `web/src/api.ts` conhece `fetch`. O detalhamento e as regras de evolução estão em [`specs/04-arquitetura-frontend.md`](specs/04-arquitetura-frontend.md).
+
 ### Fluxo de uma conferência
 
 1. A descrição passa por `redact()`: dado pessoal sai antes de qualquer chamada externa.
@@ -187,6 +189,21 @@ cd web
 npm install && npm test
 npm run dev
 ```
+
+### Teste completo de ponta a ponta
+
+A suíte Playwright levanta IA, BFF e web em portas isoladas, usa a reserva local determinística
+quando não há chave de modelo e valida o fluxo completo até o download de um PDF real. Também
+confere o catálogo, o painel e a navegação móvel.
+
+```bash
+cd web
+npx playwright install chromium
+npm run test:e2e
+```
+
+O CI executa testes, builds, lint, auditoria das dependências e essa suíte E2E. Em falha de
+navegador, o relatório do Playwright fica disponível como artefato da execução.
 
 Reconstruir os dados (opcional, os resultados já estão versionados):
 
