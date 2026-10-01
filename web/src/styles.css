@@ -185,7 +185,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .report-tabs button.active { color: white; font-weight: 650; }
 .report-tabs button.active::after { content: ""; position: absolute; left: 2px; right: 11px; bottom: -1px; height: 2px; background: var(--blue); }
 .report-scroll { min-height: 0; overflow-y: auto; padding: 14px 14px 28px; }
-.status-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 7px; }
 .status-card { min-width: 0; min-height: 84px; display: grid; grid-template-columns: 30px 1fr; align-items: start; gap: 8px; border-radius: 7px; padding: 12px 10px; cursor: pointer; text-align: left; }
 .status-symbol { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; }
 .status-card > span:last-child { min-width: 0; display: grid; gap: 3px; }
