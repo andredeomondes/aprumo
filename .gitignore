@@ -7,4 +7,9 @@ __pycache__/
 node_modules/
 dist/
 .pytest_cache/
+playwright-report/
+test-results/
+bff/data/history.json
 ai/data/embeddings.partial.npy
+tmp/
+output/
