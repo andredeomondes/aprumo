@@ -1,13 +1,5 @@
-import { useEffect, useState } from "react";
-import { api } from "../api";
-import { summarize, type MetricsSnapshot } from "../metrics";
-
-interface Payload {
-  ai: MetricsSnapshot;
-  budget: { limit: number; used: number };
-}
-
-const REFRESH_MS = 10_000;
+import { summarize } from "../metrics";
+import { useMetrics } from "../state/useMetrics";
 const percent = (value: number | null) => (value === null ? "—" : `${Math.round(value * 100)}%`);
 const seconds = (ms?: number) => (ms === undefined ? "—" : `${(ms / 1000).toFixed(1)} s`);
 
@@ -23,22 +15,7 @@ function Metric({ label, value, hint }: { label: string; value: string; hint?: s
 
 /** O sistema em operação: quem está respondendo, quanto a reserva entra e quanto demora. */
 export function Dashboard({ onError }: { onError: (message: string) => void }) {
-  const [data, setData] = useState<Payload | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const load = () =>
-      api
-        .metrics()
-        .then((payload) => active && setData(payload as Payload))
-        .catch((error: Error) => active && onError(error.message));
-    load();
-    const timer = setInterval(load, REFRESH_MS);
-    return () => {
-      active = false;
-      clearInterval(timer);
-    };
-  }, [onError]);
+  const data = useMetrics(onError);
 
   const summary = data ? summarize(data.ai) : null;
   const analyze = data?.ai.latency_ms["POST /v1/analyze"];

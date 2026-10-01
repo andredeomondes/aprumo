@@ -1,45 +1,30 @@
-import { Activity, BookOpen, Bot, FileCheck2, MessageSquare, Plus, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Activity, BookOpen, FileCheck2, History, MessageSquare, Plus } from "lucide-react";
+import { useCallback, useState } from "react";
+import { usePage } from "./app/usePage";
 import { BrandMark } from "./components/BrandMark";
 import { ContextRail } from "./components/ContextRail";
 import { ConversationPane } from "./components/ConversationPane";
 import { Dashboard } from "./components/Dashboard";
+import { HistoryPage } from "./components/HistoryPage";
 import { NormsCatalog } from "./components/NormsCatalog";
 import { ReportPane } from "./components/ReportPane";
+import { TransientNotice } from "./components/TransientNotice";
+import { useTransientNotice } from "./hooks/useTransientNotice";
 import { useAssessment } from "./state/useAssessment";
 import { useSuggestionData } from "./useSuggestionData";
 
-type Page = "conferencia" | "normas" | "painel";
 type MobileView = "conversation" | "context" | "report";
-
-function usePage(): Page {
-  const read = (): Page => {
-    const hash = window.location.hash.replace("#", "");
-    return hash === "normas" || hash === "painel" ? hash : "conferencia";
-  };
-  const [page, setPage] = useState<Page>(read);
-  useEffect(() => {
-    const update = () => setPage(read());
-    window.addEventListener("hashchange", update);
-    return () => window.removeEventListener("hashchange", update);
-  }, []);
-  return page;
-}
 
 export default function App() {
   const page = usePage();
   const data = useSuggestionData();
-  const { state, busy, slow, send, retry, downloadPdf, reset } = useAssessment();
   const [mobileView, setMobileView] = useState<MobileView>("conversation");
+  const showReport = useCallback(() => setMobileView("report"), []);
+  const { state, busy, slow, send, retry, finish, downloadPdf, reset } = useAssessment({ onReportReady: showReport });
   const [contextCollapsed, setContextCollapsed] = useState(false);
   const [reportCollapsed, setReportCollapsed] = useState(false);
-  const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
-  const showError = useCallback((text: string) => setNotice({ text, error: true }), []);
-
-  // Relatório pronto: no celular, leva a pessoa direto para ele.
-  useEffect(() => {
-    if (state.phase === "done") setMobileView("report");
-  }, [state.phase]);
+  const { notice, show: showNotice, dismiss: dismissNotice } = useTransientNotice();
+  const showError = useCallback((text: string) => showNotice(text, "error"), [showNotice]);
 
   function startNew() {
     reset();
@@ -49,6 +34,7 @@ export default function App() {
 
   const nav = [
     { page: "conferencia", label: "Conferência", icon: MessageSquare, href: "#" },
+    { page: "historico", label: "Histórico", icon: History, href: "#historico" },
     { page: "normas", label: "Normas (NRs)", icon: BookOpen, href: "#normas" },
     { page: "painel", label: "Painel", icon: Activity, href: "#painel" },
   ] as const;
@@ -109,6 +95,9 @@ export default function App() {
           <a className="icon-button" href="#normas" aria-label="Normas">
             <BookOpen size={16} />
           </a>
+          <a className="icon-button" href="#historico" aria-label="Histórico">
+            <History size={16} />
+          </a>
           <a className="icon-button" href="#painel" aria-label="Painel">
             <Activity size={16} />
           </a>
@@ -125,6 +114,7 @@ export default function App() {
           <Dashboard onError={showError} />
         </main>
       )}
+      {page === "historico" && <HistoryPage onError={showError} />}
       {page === "conferencia" && (
         <main
           id="main-content"
@@ -138,6 +128,7 @@ export default function App() {
             mobileActive={mobileView === "conversation"}
             onSend={send}
             onRetry={retry}
+            onFinish={finish}
             onReset={startNew}
           />
           <ContextRail
@@ -158,15 +149,7 @@ export default function App() {
         </main>
       )}
 
-      {notice && (
-        <div className={`toast ${notice.error ? "error" : ""}`} role={notice.error ? "alert" : "status"}>
-          <Bot size={16} />
-          <span>{notice.text}</span>
-          <button aria-label="Fechar aviso" onClick={() => setNotice(null)}>
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      <TransientNotice notice={notice} onDismiss={dismissNotice} />
     </div>
   );
 }

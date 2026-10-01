@@ -2,7 +2,7 @@ import { AlertTriangle, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHel
 import { useMemo, useState, type KeyboardEvent } from "react";
 import type { State } from "../state/assessment";
 import { countByStatus, STATUS_LABEL, STATUS_ORDER } from "../status";
-import type { FindingStatus } from "../types";
+import type { FindingStatus, Identification } from "../types";
 
 type Tab = "overview" | "norms" | "answers";
 const TABS: Tab[] = ["overview", "norms", "answers"];
@@ -20,7 +20,7 @@ interface Props {
   collapsed: boolean;
   mobileActive: boolean;
   onCollapse: (collapsed: boolean) => void;
-  onDownload: () => Promise<void>;
+  onDownload: (identification?: Identification) => Promise<void>;
   onReset: () => void;
   onError: (message: string) => void;
 }
@@ -30,6 +30,8 @@ export function ReportPane({ state, collapsed, mobileActive, onCollapse, onDownl
   const [filter, setFilter] = useState<FindingStatus | "all">("all");
   const [open, setOpen] = useState<string[]>([]);
   const [downloading, setDownloading] = useState(false);
+  const [identification, setIdentification] = useState<Identification>({ company: "", location: "", responsible: "", reviewer: "" });
+  const identify = (field: keyof Identification, value: string) => setIdentification((current) => ({ ...current, [field]: value }));
   const report = state.report;
 
   const textOf = useMemo(() => new Map((report?.requirements ?? []).map((r) => [r.ref, r.text])), [report]);
@@ -41,7 +43,7 @@ export function ReportPane({ state, collapsed, mobileActive, onCollapse, onDownl
   async function download() {
     setDownloading(true);
     try {
-      await onDownload();
+      await onDownload(identification);
     } catch (error) {
       onError((error as Error).message);
     } finally {
@@ -173,12 +175,44 @@ export function ReportPane({ state, collapsed, mobileActive, onCollapse, onDownl
                         <ChevronDown className={expanded ? "rotated" : ""} size={15} />
                       </button>
                       <p>{finding.justification}</p>
+                      {finding.recommendation && (
+                        <p className="finding-field">
+                          <strong>Recomendação</strong>
+                          {finding.recommendation}
+                        </p>
+                      )}
+                      {expanded && finding.evidence && (
+                        <p className="finding-field">
+                          <strong>Evidência informada</strong>
+                          {finding.evidence}
+                        </p>
+                      )}
                       {expanded && textOf.get(finding.ref) && <p className="norm-text">{textOf.get(finding.ref)}</p>}
                     </article>
                   );
                 })}
               </div>
-              <p className="report-foot">{report.disclaimer}</p>
+              <details className="doc-fields">
+                <summary>Identificação do documento (opcional)</summary>
+                <p>Esses dados entram só no PDF. Não são enviados ao modelo de linguagem.</p>
+                <div>
+                  {([
+                    ["company", "Empresa / unidade"],
+                    ["location", "Local da atividade"],
+                    ["responsible", "Responsável pela atividade"],
+                    ["reviewer", "Profissional de SST que vai revisar"],
+                  ] as const).map(([field, label]) => (
+                    <label key={field}>
+                      <span>{label}</span>
+                      <input value={identification[field]} maxLength={200} onChange={(event) => identify(field, event.target.value)} />
+                    </label>
+                  ))}
+                </div>
+              </details>
+              <p className="report-foot">
+                Minuta de relatório técnico: só vale como documento da empresa depois de revisada e assinada por
+                profissional habilitado. {report.disclaimer}
+              </p>
             </>
           ) : (
             <div className="empty-panel">

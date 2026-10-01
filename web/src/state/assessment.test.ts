@@ -8,8 +8,8 @@ const analysis: Analysis = {
   norms: [{ norm: "NR-35", title: "Trabalho em Altura", share: 1 }],
   requirements: [],
   questions: [
-    { id: "q1", text: "Há linha de vida?", refs: ["NR-35 item 35.5.1"] },
-    { id: "q2", text: "Houve análise de risco?", refs: ["NR-35 item 35.4.5"] },
+    { id: "q1", text: "Há linha de vida?", refs: ["NR-35 item 35.5.1"], section: "controles" },
+    { id: "q2", text: "Houve análise de risco?", refs: ["NR-35 item 35.4.5"], section: "planejamento" },
   ],
   risk_context: [
     {

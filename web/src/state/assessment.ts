@@ -1,4 +1,4 @@
-import type { Analysis, QA, Report, SectorTrend } from "../types";
+import type { Analysis, QA, QuestionSection, Report, SectorTrend, Turn } from "../types";
 
 export type Phase = "describe" | "analyzing" | "asking" | "evaluating" | "done";
 
@@ -6,10 +6,11 @@ export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   text: string;
-  kind?: "summary" | "question" | "error";
+  kind?: "summary" | "question" | "followup" | "reply" | "error";
   refs?: string[];
   step?: number;
   total?: number;
+  section?: QuestionSection;
   trends?: SectorTrend[];
 }
 
@@ -23,20 +24,27 @@ export interface State {
   report?: Report;
   attempt: number;
   failed: boolean;
+  /** Aprofundamento em aberto da pergunta atual; no máximo um por pergunta. */
+  followUp: string | null;
+  /** O usuário falou e o assistente ainda não respondeu. */
+  conversing: boolean;
 }
 
 export type Action =
   | { type: "activity"; text: string }
   | { type: "analysis"; analysis: Analysis }
   | { type: "answer"; text: string }
+  | { type: "said"; text: string }
+  | { type: "turn"; text: string; turn: Turn }
+  | { type: "finish" }
   | { type: "report"; report: Report }
   | { type: "failed"; message: string }
   | { type: "retry" }
   | { type: "reset" };
 
 const GREETING =
-  "Descreva a atividade planejada: o que será feito, onde e com quais equipamentos. " +
-  "Eu identifico as normas aplicáveis e faço algumas perguntas antes de montar o relatório.";
+  "Me conta o que vai ser feito: qual é a atividade, onde e com quais equipamentos. " +
+  "Eu identifico as normas que se aplicam e a gente conversa sobre os pontos que precisam estar em ordem antes de começar.";
 
 export const initialState: State = {
   phase: "describe",
@@ -46,6 +54,8 @@ export const initialState: State = {
   answers: [],
   attempt: 0,
   failed: false,
+  followUp: null,
+  conversing: false,
 };
 
 function append(messages: ChatMessage[], message: Omit<ChatMessage, "id">): ChatMessage[] {
@@ -61,7 +71,17 @@ function askQuestion(messages: ChatMessage[], analysis: Analysis, index: number)
     refs: question.refs,
     step: index + 1,
     total: analysis.questions.length,
+    section: question.section,
   });
+}
+
+/** Registra a resposta da pergunta atual e segue: próxima pergunta ou avaliação. */
+function advance(state: State, answers: QA[], messages: ChatMessage[]): State {
+  const analysis = state.analysis!;
+  const next = state.questionIndex + 1;
+  const base = { ...state, answers, followUp: null, conversing: false };
+  if (next >= analysis.questions.length) return { ...base, phase: "evaluating", messages };
+  return { ...base, questionIndex: next, messages: askQuestion(messages, analysis, next) };
 }
 
 export function reducer(state: State, action: Action): State {
@@ -92,21 +112,52 @@ export function reducer(state: State, action: Action): State {
         analysis,
         questionIndex: 0,
         answers: [],
+        followUp: null,
         messages: askQuestion(messages, analysis, 0),
       };
     }
 
+    // Resposta direta, sem turno de conversa: usada quando o assistente não está disponível.
     case "answer": {
       if (!state.analysis) return state;
       const question = state.analysis.questions[state.questionIndex];
       const answers = [...state.answers, { question: question.text, answer: action.text }];
-      const messages = append(state.messages, { role: "user", text: action.text });
-      const next = state.questionIndex + 1;
-      if (next >= state.analysis.questions.length) {
-        return { ...state, phase: "evaluating", answers, messages };
-      }
-      return { ...state, answers, questionIndex: next, messages: askQuestion(messages, state.analysis, next) };
+      return advance(state, answers, append(state.messages, { role: "user", text: action.text }));
     }
+
+    case "said":
+      return { ...state, conversing: true, messages: append(state.messages, { role: "user", text: action.text }) };
+
+    case "turn": {
+      if (!state.analysis || state.phase !== "asking") return state;
+      const { turn, text } = action;
+      const replied = turn.reply ? append(state.messages, { role: "assistant", kind: "reply", text: turn.reply }) : state.messages;
+      // Dúvida ou outro assunto: explica e continua na mesma pergunta, sem registrar resposta.
+      if (!turn.answered) return { ...state, conversing: false, messages: replied };
+
+      const question = state.analysis.questions[state.questionIndex];
+      const answers =
+        state.followUp === null
+          ? [...state.answers, { question: question.text, answer: text }]
+          : state.answers.map((qa, index) =>
+              index === state.answers.length - 1 ? { ...qa, answer: `${qa.answer}\nComplemento: ${text}` } : qa,
+            );
+      if (turn.follow_up && state.followUp === null) {
+        return {
+          ...state,
+          answers,
+          conversing: false,
+          followUp: turn.follow_up,
+          messages: append(replied, { role: "assistant", kind: "followup", text: turn.follow_up, refs: question.refs }),
+        };
+      }
+      return advance(state, answers, replied);
+    }
+
+    case "finish":
+      return state.phase === "asking" && state.answers.length > 0
+        ? { ...state, phase: "evaluating", followUp: null, conversing: false }
+        : state;
 
     case "report":
       return { ...state, phase: "done", report: action.report };
@@ -115,6 +166,7 @@ export function reducer(state: State, action: Action): State {
       return {
         ...state,
         failed: true,
+        conversing: false,
         // Na avaliação, as respostas já dadas não se perdem: dá para tentar de novo.
         phase: state.phase === "evaluating" ? "evaluating" : "describe",
         messages: append(state.messages, { role: "assistant", kind: "error", text: action.message }),
